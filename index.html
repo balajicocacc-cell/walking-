@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Walking Challenge Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body {
@@ -23,6 +24,11 @@ h2 {
   color: #2c3e50;
 }
 
+h3 {
+  color: #2c3e50;
+  margin-bottom: 10px;
+}
+
 .card {
   background: white;
   padding: 15px;
@@ -37,6 +43,7 @@ input, select {
   padding: 10px;
   border-radius: 6px;
   border: 1px solid #ccc;
+  box-sizing: border-box;
 }
 
 button {
@@ -57,7 +64,7 @@ button:hover {
 table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 20px;
+  margin-top: 10px;
 }
 
 th, td {
@@ -75,6 +82,63 @@ img {
   width: 80px;
   border-radius: 6px;
 }
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.stat-box {
+  background: #f0f8ff;
+  padding: 15px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.stat-box h4 {
+  margin: 0 0 5px;
+  color: #555;
+  font-size: 14px;
+}
+
+.stat-box span {
+  font-size: 22px;
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.leaderboard-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid #eee;
+  align-items: center;
+}
+
+.leaderboard-row:last-child {
+  border-bottom: none;
+}
+
+.leaderboard-rank {
+  font-weight: bold;
+  color: #3498db;
+  width: 30px;
+}
+
+.leaderboard-name {
+  flex: 1;
+}
+
+.leaderboard-steps {
+  font-weight: bold;
+  color: #27ae60;
+}
+
+.medal {
+  font-size: 18px;
+}
 </style>
 
 </head>
@@ -85,8 +149,8 @@ img {
 
 <h2>🚶 Walking Challenge Dashboard</h2>
 
+<!-- FORM -->
 <div class="card">
-
   <select id="name">
     <option value="">Select Participant</option>
     <option>Jayashree V</option>
@@ -105,11 +169,46 @@ img {
   <input id="file" type="file">
 
   <button onclick="submitSteps()">Submit</button>
-
 </div>
 
+<!-- STATS -->
 <div class="card">
-  <h3>📊 Daily Entries</h3>
+  <h3>📈 Overall Stats</h3>
+  <div class="stats-grid">
+    <div class="stat-box">
+      <h4>Total Steps</h4>
+      <span id="statTotalSteps">0</span>
+    </div>
+    <div class="stat-box">
+      <h4>Total Entries</h4>
+      <span id="statTotalEntries">0</span>
+    </div>
+    <div class="stat-box">
+      <h4>Top Walker</h4>
+      <span id="statTopWalker">-</span>
+    </div>
+    <div class="stat-box">
+      <h4>Avg Steps/Entry</h4>
+      <span id="statAvgSteps">0</span>
+    </div>
+  </div>
+</div>
+
+<!-- LEADERBOARD -->
+<div class="card">
+  <h3>🏆 Leaderboard</h3>
+  <div id="leaderboard"></div>
+</div>
+
+<!-- CHART -->
+<div class="card">
+  <h3>📊 Steps by Participant</h3>
+  <canvas id="stepsChart"></canvas>
+</div>
+
+<!-- TABLE -->
+<div class="card">
+  <h3>📋 Daily Entries</h3>
   <table>
     <thead>
       <tr>
@@ -127,7 +226,9 @@ img {
 
 <script>
 
-const API = "https://script.google.com/macros/s/AKfycbyl47tLwD3GYzn0Yxne5FnJHdP6y9Geu2E-6uFJdBcE33u1YLyESSIGnc2NJjHdh7Ggiw/exec";
+const API = "https://script.google.com/macros/s/AKfycbzGEbeap1V33xZrkwYedKXzqnnXS1inMobSaCT1-A7856GrLXdC9zgtk0z-g7uafB4teg/exec";
+
+let stepsChart = null;
 
 window.onload = () => {
   loadData();
@@ -173,8 +274,8 @@ async function loadData(){
   const res = await fetch(API);
   const data = await res.json();
 
+  // Render table
   let html = "";
-
   data.forEach(row => {
     html += `
       <tr>
@@ -185,8 +286,71 @@ async function loadData(){
       </tr>
     `;
   });
-
   document.getElementById("tableBody").innerHTML = html;
+
+  // Calculate totals per participant
+  const totals = {};
+  let totalSteps = 0;
+
+  data.forEach(row => {
+    const steps = Number(row.steps) || 0;
+    totals[row.name] = (totals[row.name] || 0) + steps;
+    totalSteps += steps;
+  });
+
+  // Stats
+  const entries = data.length;
+  const avgSteps = entries ? Math.round(totalSteps / entries) : 0;
+  const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+  const topWalker = sorted.length ? sorted[0][0] : "-";
+
+  document.getElementById("statTotalSteps").textContent = totalSteps.toLocaleString();
+  document.getElementById("statTotalEntries").textContent = entries;
+  document.getElementById("statTopWalker").textContent = topWalker;
+  document.getElementById("statAvgSteps").textContent = avgSteps.toLocaleString();
+
+  // Leaderboard
+  const medals = ["🥇", "🥈", "🥉"];
+  let lbHtml = "";
+  sorted.forEach((item, i) => {
+    const medal = i < 3 ? `<span class="medal">${medals[i]}</span>` : `<span class="leaderboard-rank">${i + 1}</span>`;
+    lbHtml += `
+      <div class="leaderboard-row">
+        ${medal}
+        <span class="leaderboard-name">${item[0]}</span>
+        <span class="leaderboard-steps">${item[1].toLocaleString()} steps</span>
+      </div>
+    `;
+  });
+  document.getElementById("leaderboard").innerHTML = lbHtml;
+
+  // Chart
+  const labels = sorted.map(s => s[0]);
+  const values = sorted.map(s => s[1]);
+  const colors = ['#e74c3c','#3498db','#27ae60','#f39c12','#9b59b6','#1abc9c','#e67e22','#2980b9','#d35400'];
+
+  if (stepsChart) stepsChart.destroy();
+
+  stepsChart = new Chart(document.getElementById("stepsChart"), {
+    type: "bar",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Total Steps",
+        data: values,
+        backgroundColor: colors.slice(0, labels.length)
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: { beginAtZero: true }
+      }
+    }
+  });
 }
 
 </script>
