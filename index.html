@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <title>Walking Challenge Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <style>
 body {
@@ -222,6 +223,7 @@ img {
     <select id="weekFilter" style="width:auto;display:inline-block;" onchange="updateStats()">
       <option value="all">All Time</option>
     </select>
+    <button onclick="downloadWeekData()" style="width:auto;display:inline-block;padding:8px 16px;margin-left:8px;">⬇️ Download Excel</button>
   </div>
   <div class="stats-grid">
     <div class="stat-box">
@@ -380,6 +382,44 @@ function renderTable() {
 function clearFilter() {
   document.getElementById('filterDate').value = '';
   renderTable();
+}
+
+function downloadWeekData() {
+  const weekVal = document.getElementById('weekFilter').value;
+  let filtered = allData;
+
+  if (weekVal !== 'all') {
+    const [selYear, selWeek] = weekVal.split('-W').map(Number);
+    filtered = allData.filter(row => {
+      const d = new Date(row.date);
+      if (isNaN(d)) return false;
+      const [yr, wk] = getWeekNumber(d);
+      return yr === selYear && wk === selWeek;
+    });
+  }
+
+  if (filtered.length === 0) {
+    alert("No data to download for the selected week.");
+    return;
+  }
+
+  const rows = filtered.map(row => {
+    const d = new Date(row.date);
+    const dateStr = isNaN(d) ? row.date : d.toLocaleDateString('en-GB');
+    return {
+      Name: row.name,
+      Date: dateStr,
+      Steps: row.steps,
+      Screenshot: row.image || ''
+    };
+  });
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Walking Data");
+
+  const fileName = weekVal === 'all' ? 'walkflix_all_data.xlsx' : `walkflix_${weekVal}.xlsx`;
+  XLSX.writeFile(wb, fileName);
 }
 
 async function loadData(){
