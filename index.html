@@ -2,122 +2,200 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Walking Challenge</title>
+<title>Walking Challenge Dashboard</title>
 
 <style>
-body{
-  font-family:Arial;
-  max-width:700px;
-  margin:auto;
-  padding:20px;
+body {
+  font-family: Arial;
+  margin: 0;
+  background: linear-gradient(135deg, #dff6ff, #ffffff);
 }
-input{
-  width:100%;
-  margin:10px 0;
-  padding:10px;
+
+.container {
+  max-width: 900px;
+  margin: auto;
+  padding: 20px;
 }
-button{
-  padding:10px 20px;
+
+h2 {
+  text-align: center;
+  color: #2c3e50;
+}
+
+.card {
+  background: white;
+  padding: 15px;
+  margin: 15px 0;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+input, select {
+  width: 100%;
+  margin: 8px 0;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  background: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #219150;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+th, td {
+  padding: 10px;
+  border: 1px solid #ddd;
+  text-align: center;
+}
+
+th {
+  background: #3498db;
+  color: white;
+}
+
+img {
+  width: 70px;
+  border-radius: 6px;
 }
 </style>
 
 </head>
+
 <body>
 
-<h2>Walking Challenge</h2>
+<div class="container">
 
-<input id="name" placeholder="Name">
+<h2>🚶 Walking Challenge Dashboard</h2>
 
-<input id="date" type="date">
+<!-- FORM -->
+<div class="card">
 
-<input id="steps" type="number"
-placeholder="Steps">
+  <select id="name">
+    <option value="">Select Participant</option>
+    <option>Jayashree V</option>
+    <option>Prakash Karath</option>
+    <option>Balaji C</option>
+    <option>Gabriel Guerra</option>
+    <option>P Rima Srudhi</option>
+    <option>Praveen Kumar Thirunavukkarasu</option>
+    <option>Sergio Delgado</option>
+    <option>Syed Khadeer Ahmed</option>
+    <option>Venkataraman Rengarajan</option>
+  </select>
 
-<input id="file" type="file">
+  <input id="date" type="date">
+  <input id="steps" type="number" placeholder="Steps">
+  <input id="file" type="file">
 
-<button onclick="submitSteps()">
-Submit
-</button>
+  <button onclick="submitSteps()">Submit</button>
 
-<hr>
+</div>
 
-<h2>Leaderboard</h2>
+<!-- TABLE -->
+<div class="card">
+  <h3>📊 Daily Entries</h3>
 
-<div id="leaderboard"></div>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Date</th>
+        <th>Steps</th>
+        <th>Screenshot</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+
+</div>
+
+</div>
 
 <script>
 
-const API =
-"https://script.google.com/macros/s/AKfycbxMUhXZ9EBDamYFhYFrRiIuOsqQ1JqdiO63tItxAuXUBYYDypiO6mCRr7RwbpGS39E4pA/exec";
+const API = "https://script.google.com/macros/s/AKfycbxMUhXZ9EBDamYFhYFrRiIuOsqQ1JqdiO63tItxAuXUBYYDypiO6mCRr7RwbpGS39E4pA/exec";
 
+/* SUBMIT STEPS */
 async function submitSteps(){
 
- const file =
- document.getElementById('file').files[0];
+ const file = document.getElementById('file').files[0];
+
+ if(!file){
+   alert("Please upload screenshot");
+   return;
+ }
 
  const reader = new FileReader();
 
  reader.onload = async function(){
 
-   const base64 =
-   reader.result.split(',')[1];
+   const base64 = reader.result.split(',')[1];
 
    const payload = {
-     name:
-       document.getElementById('name').value,
-
-     date:
-       document.getElementById('date').value,
-
-     steps:
-       document.getElementById('steps').value,
-
-     fileName:file.name,
-
-     mimeType:file.type,
-
-     image:base64
+     name: document.getElementById('name').value,
+     date: document.getElementById('date').value,
+     steps: document.getElementById('steps').value,
+     fileName: file.name,
+     mimeType: file.type,
+     image: base64
    };
-   await fetch(API, {
-    method: "POST",
-    mode: "no-cors",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(payload)
-  });
 
-  alert("Submitted");
-  loadLeaderboard();
+   await fetch(API, {
+     method: "POST",
+     mode: "no-cors",
+     headers: {
+       "Content-Type": "application/json"
+     },
+     body: JSON.stringify(payload)
+   });
+
+   alert("Submitted successfully!");
+   loadData();
  };
 
  reader.readAsDataURL(file);
 }
 
-async function loadLeaderboard(){
+/* LOAD TABLE */
+async function loadData(){
 
  const res = await fetch(API);
-
  const data = await res.json();
 
- let html = "<ol>";
+ let html = "";
 
- Object.entries(data)
-   .sort((a,b)=>b[1]-a[1])
-   .forEach(x=>{
+ data.forEach(row => {
+   html += `
+     <tr>
+       <td>${row.name}</td>
+       <td>${row.date}</td>
+       <td>${row.steps}</td>
+       <td><img src="${row.image}" /></td>
+     </tr>
+   `;
+ });
 
-      html +=
-      `<li>${x[0]} - ${x[1]} steps</li>`;
-   });
-
- html += "</ol>";
-
- document.getElementById(
-   "leaderboard"
- ).innerHTML = html;
+ document.getElementById("tableBody").innerHTML = html;
 }
 
-loadLeaderboard();
+loadData();
 
 </script>
 
