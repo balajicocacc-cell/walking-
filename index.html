@@ -4,7 +4,6 @@
 <meta charset="utf-8">
 <title>Walking Challenge Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <style>
 body {
@@ -403,23 +402,45 @@ function downloadWeekData() {
     return;
   }
 
-  const rows = filtered.map(row => {
+  const weekLabel = weekVal === 'all' ? 'All Time' : document.getElementById('weekFilter').selectedOptions[0].text;
+
+  let rows = '';
+  filtered.forEach(row => {
     const d = new Date(row.date);
     const dateStr = isNaN(d) ? row.date : d.toLocaleDateString('en-GB');
-    return {
-      Name: row.name,
-      Date: dateStr,
-      Steps: row.steps,
-      Screenshot: row.image || ''
-    };
+    const imgUrl = row.image || '';
+    const match = imgUrl.match(/\/d\/([^/]+)/);
+    const thumbUrl = match ? 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w300' : imgUrl;
+    rows += `<tr>
+      <td>${row.name}</td>
+      <td>${dateStr}</td>
+      <td>${row.steps}</td>
+      <td><img src="${thumbUrl}" style="max-width:200px;max-height:150px;"></td>
+    </tr>`;
   });
 
-  const ws = XLSX.utils.json_to_sheet(rows);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Walking Data");
+  const html = `<!DOCTYPE html>
+<html><head><title>Walkflix Team 1 - ${weekLabel}</title>
+<style>
+  body { font-family: Arial; padding: 20px; }
+  h2 { text-align: center; color: #2c3e50; }
+  table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+  th, td { padding: 10px; border: 1px solid #ddd; text-align: center; }
+  th { background: #3498db; color: white; }
+  img { max-width: 200px; max-height: 150px; border-radius: 6px; }
+  @media print { button { display: none; } }
+</style></head><body>
+<h2>\ud83d\udeb6 Walkflix Team 1 - ${weekLabel}</h2>
+<button onclick="window.print()" style="padding:10px 20px;background:#27ae60;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;">\ud83d\udda8\ufe0f Print / Save as PDF</button>
+<table>
+  <thead><tr><th>Name</th><th>Date</th><th>Steps</th><th>Screenshot</th></tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+</body></html>`;
 
-  const fileName = weekVal === 'all' ? 'walkflix_all_data.xlsx' : `walkflix_${weekVal}.xlsx`;
-  XLSX.writeFile(wb, fileName);
+  const newWindow = window.open('', '_blank');
+  newWindow.document.write(html);
+  newWindow.document.close();
 }
 
 async function loadData(){
