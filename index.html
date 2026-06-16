@@ -173,6 +173,54 @@ img {
 .medal {
   font-size: 18px;
 }
+
+body.dark-mode {
+  background: linear-gradient(135deg, #1a1a2e, #16213e) !important;
+  color: #eee;
+}
+
+body.dark-mode .card {
+  background: #1e293b;
+  color: #eee;
+}
+
+body.dark-mode h2, body.dark-mode h3 {
+  color: #eee;
+}
+
+body.dark-mode th {
+  background: #2980b9;
+}
+
+body.dark-mode td {
+  border-color: #444;
+}
+
+body.dark-mode input, body.dark-mode select {
+  background: #2c3e50;
+  color: #eee;
+  border-color: #555;
+}
+
+body.dark-mode .stat-box {
+  background: #2c3e50;
+}
+
+body.dark-mode .stat-box h4 {
+  color: #aaa;
+}
+
+body.dark-mode .stat-box span {
+  color: #eee;
+}
+
+body.dark-mode .leaderboard-row {
+  border-color: #444;
+}
+
+body.dark-mode .leaderboard-name, body.dark-mode .leaderboard-steps {
+  color: #eee;
+}
 </style>
 
 </head>
@@ -192,6 +240,16 @@ img {
 <div class="container hidden" id="dashboard">
 
 <h2>🚶 Walkflix Team 1 - Walking Challenge Dashboard</h2>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+  <div>
+    <label>Week: </label>
+    <select id="weekFilter" style="width:auto;display:inline-block;" onchange="onWeekChange()">
+      <option value="all">All Time</option>
+    </select>
+    <button onclick="downloadWeekData()" style="width:auto;display:inline-block;padding:8px 16px;margin-left:8px;">⬇️ Download Report</button>
+  </div>
+  <button onclick="toggleDarkMode()" id="darkModeBtn" style="width:auto;padding:8px 14px;font-size:13px;background:#34495e;">🌙 Dark Mode</button>
+</div>
 
 <!-- FORM -->
 <div class="card">
@@ -218,16 +276,15 @@ img {
   <button id="submitBtn" onclick="submitSteps()">Submit</button>
 </div>
 
+<!-- WHO HASN'T SUBMITTED TODAY -->
+<div class="card" id="missingCard">
+  <h3>⚠️ Who hasn't submitted today?</h3>
+  <div id="missingList"></div>
+</div>
+
 <!-- STATS -->
 <div class="card">
   <h3>📈 Overall Stats</h3>
-  <div style="margin-bottom:10px;">
-    <label>Week: </label>
-    <select id="weekFilter" style="width:auto;display:inline-block;" onchange="updateStats()">
-      <option value="all">All Time</option>
-    </select>
-    <button onclick="downloadWeekData()" style="width:auto;display:inline-block;padding:8px 16px;margin-left:8px;">⬇️ Download Report</button>
-  </div>
   <div id="loadingMsg" style="text-align:center;padding:40px;font-size:18px;display:flex;flex-direction:column;align-items:center;gap:10px;">
     <img src="https://i.gifer.com/ZZ5H.gif" style="width:50px;height:50px;border-radius:0;">
     <span>Loading data...</span>
@@ -249,35 +306,31 @@ img {
       <h4>Avg Steps/Entry</h4>
       <span id="statAvgSteps">0</span>
     </div>
+    <div class="stat-box">
+      <h4>🔥 Best Streak</h4>
+      <span id="statBestStreak">-</span>
+    </div>
   </div>
 </div>
 
-<!-- LEADERBOARD -->
+<!-- LEADERBOARD & CHART -->
 <div class="card">
   <h3>🏆 Leaderboard</h3>
-  <div style="margin-bottom:10px;">
-    <label>View: </label>
-    <select id="leaderboardFilter" style="width:auto;display:inline-block;" onchange="updateLeaderboard()">
-      <option value="all">All Time</option>
-    </select>
-    <input id="leaderboardDate" type="date" style="width:auto;display:inline-block;margin-left:8px;" onchange="updateLeaderboard()">
-    <button onclick="clearLeaderboardDate()" style="width:auto;display:inline-block;padding:8px 12px;margin-left:4px;font-size:13px;">Clear Date</button>
-  </div>
   <div id="leaderboard"></div>
+  <h3 style="margin-top:20px;">📊 Steps by Participant</h3>
+  <canvas id="stepsChart"></canvas>
 </div>
 
-<!-- CHART -->
+<!-- TREND CHART -->
 <div class="card">
-  <h3>📊 Steps by Participant</h3>
+  <h3>📉 Steps Trend (Daily)</h3>
   <div style="margin-bottom:10px;">
-    <label>View: </label>
-    <select id="chartFilter" style="width:auto;display:inline-block;" onchange="updateChart()">
-      <option value="all">All Time</option>
+    <label>Participant: </label>
+    <select id="trendFilter" style="width:auto;display:inline-block;" onchange="updateTrendChart()">
+      <option value="all">All (Average)</option>
     </select>
-    <input id="chartDate" type="date" style="width:auto;display:inline-block;margin-left:8px;" onchange="updateChart()">
-    <button onclick="clearChartDate()" style="width:auto;display:inline-block;padding:8px 12px;margin-left:4px;font-size:13px;">Clear Date</button>
   </div>
-  <canvas id="stepsChart"></canvas>
+  <canvas id="trendChart"></canvas>
 </div>
 
 <!-- TABLE -->
@@ -306,12 +359,6 @@ img {
 <!-- SUMMARY TABLE -->
 <div class="card">
   <h3>📝 Weekly Summary</h3>
-  <div style="margin-bottom:10px;">
-    <label>Week: </label>
-    <select id="summaryWeekFilter" style="width:auto;display:inline-block;" onchange="updateSummary()">
-      <option value="all">All Time</option>
-    </select>
-  </div>
   <table>
     <thead>
       <tr>
@@ -324,6 +371,11 @@ img {
   </table>
 </div>
 
+<!-- LOGOUT -->
+<div style="text-align:center;margin-top:20px;margin-bottom:30px;">
+  <button onclick="logout()" style="width:auto;padding:10px 20px;background:#e74c3c;font-size:14px;">🚪 Logout</button>
+</div>
+
 </div>
 
 <script>
@@ -331,7 +383,14 @@ img {
 const API = "https://script.google.com/macros/s/AKfycbzEgK4-g1a-_tjMqsgH7cWTIzCpa6lVQYbiPcQq7H-Eo8yTUdOIf3pLwf89LjraNyCRQQ/exec";
 
 let stepsChart = null;
+let trendChart = null;
 let allData = [];
+
+const participants = [
+  "Jayashree V","Prakash Karath","Balaji C","Gabriel Guerra",
+  "P Rima Srudhi","Praveen Kumar Thirunavukkarasu","Sergio Delgado",
+  "Syed Khadeer Ahmed","Venkataraman Rengarajan"
+];
 
 const PASS = "walkflix2026";
 
@@ -368,6 +427,13 @@ const motivationalQuotes = [
   "🌚 Even on tough days, you still showed up. Legend!"
 ];
 
+function logout() {
+  sessionStorage.removeItem('walkflix_auth');
+  document.getElementById('dashboard').classList.add('hidden');
+  document.getElementById('loginScreen').style.display = 'block';
+  document.getElementById('password').value = '';
+}
+
 function login() {
   const input = document.getElementById('password').value;
   if (input === PASS) {
@@ -384,17 +450,24 @@ window.onload = () => {
   if (sessionStorage.getItem('walkflix_auth') === 'true') {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('dashboard').classList.remove('hidden');
+    if (sessionStorage.getItem('walkflix_dark') === 'true') {
+      document.body.classList.add('dark-mode');
+      document.getElementById('darkModeBtn').textContent = '☀️ Light Mode';
+    }
     loadData();
   }
 };
 
 async function submitSteps(){
+  const name = document.getElementById('name').value;
+  const date = document.getElementById('date').value;
+  const steps = document.getElementById('steps').value;
   const file = document.getElementById('file').files[0];
 
-  if(!file){
-    alert("Please upload screenshot");
-    return;
-  }
+  if (!name) { alert("Please select a participant"); return; }
+  if (!date) { alert("Please select a date"); return; }
+  if (!steps) { alert("Please enter steps"); return; }
+  if (!file) { alert("Please upload screenshot"); return; }
 
   const btn = document.getElementById('submitBtn');
   btn.disabled = true;
@@ -439,6 +512,7 @@ async function submitSteps(){
 
     btn.disabled = false;
     btn.textContent = 'Submit';
+    showConfetti();
     alert(motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)]);
     document.getElementById('name').value = '';
     document.getElementById('date').value = '';
@@ -666,6 +740,8 @@ async function loadData(){
   updateChart();
   updateLeaderboard();
   updateSummary();
+  updateMissing();
+  updateTrendChart();
 }
 
 function getWeekNumber(d) {
@@ -703,18 +779,21 @@ function populateWeekFilter() {
     }).join('');
 
   document.getElementById('weekFilter').innerHTML = weekOptions;
-  document.getElementById('chartFilter').innerHTML = weekOptions;
-  document.getElementById('summaryWeekFilter').innerHTML = weekOptions;
-  document.getElementById('leaderboardFilter').innerHTML = weekOptions;
 
   // Default to current week if available
   const today = new Date();
   const [curYr, curWk] = getWeekNumber(today);
   const curWeekVal = curYr + '-W' + String(curWk).padStart(2, '0');
   if ([...weeks].includes(curWeekVal)) {
-    document.getElementById('leaderboardFilter').value = curWeekVal;
-    document.getElementById('chartFilter').value = curWeekVal;
+    document.getElementById('weekFilter').value = curWeekVal;
   }
+}
+
+function onWeekChange() {
+  updateStats();
+  updateLeaderboard();
+  updateChart();
+  updateSummary();
 }
 
 function updateStats() {
@@ -752,18 +831,24 @@ function updateStats() {
   document.getElementById("statTopWalker").textContent = topWalker;
   document.getElementById("statAvgSteps").textContent = avgSteps.toLocaleString();
 
+  // Best streak
+  let bestStreak = 0;
+  let streakPerson = '-';
+  participants.forEach(p => {
+    const s = getStreak(p);
+    if (s > bestStreak) { bestStreak = s; streakPerson = p; }
+  });
+  document.getElementById("statBestStreak").textContent = bestStreak > 0 ? `${streakPerson} (${bestStreak}d)` : '-';
+
   // Leaderboard
   updateLeaderboard();
 }
 
 function updateLeaderboard() {
-  const weekVal = document.getElementById('leaderboardFilter').value;
-  const dateVal = document.getElementById('leaderboardDate').value;
+  const weekVal = document.getElementById('weekFilter').value;
   let filtered = allData;
 
-  if (dateVal) {
-    filtered = allData.filter(row => getRawDate(row) === dateVal);
-  } else if (weekVal !== 'all') {
+  if (weekVal !== 'all') {
     const [selYear, selWeek] = weekVal.split('-W').map(Number);
     filtered = allData.filter(row => {
       const rd = getRawDate(row);
@@ -795,18 +880,8 @@ function updateLeaderboard() {
   document.getElementById("leaderboard").innerHTML = lbHtml || '<p>No data</p>';
 }
 
-function clearLeaderboardDate() {
-  document.getElementById('leaderboardDate').value = '';
-  updateLeaderboard();
-}
-
-function clearChartDate() {
-  document.getElementById('chartDate').value = '';
-  updateChart();
-}
-
 function updateSummary() {
-  const weekVal = document.getElementById('summaryWeekFilter').value;
+  const weekVal = document.getElementById('weekFilter').value;
   let filtered = allData;
 
   if (weekVal !== 'all') {
@@ -890,13 +965,10 @@ function downloadSummary() {
 }
 
 function updateChart() {
-  const weekVal = document.getElementById('chartFilter').value;
-  const dateVal = document.getElementById('chartDate').value;
+  const weekVal = document.getElementById('weekFilter').value;
   let filtered = allData;
 
-  if (dateVal) {
-    filtered = allData.filter(row => getRawDate(row) === dateVal);
-  } else if (weekVal !== 'all') {
+  if (weekVal !== 'all') {
     const [selYear, selWeek] = weekVal.split('-W').map(Number);
     filtered = allData.filter(row => {
       const rd = getRawDate(row);
@@ -939,6 +1011,139 @@ function updateChart() {
       }
     }
   });
+}
+
+function updateMissing() {
+  const today = new Date();
+  const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+  const submittedToday = new Set(allData.filter(row => getRawDate(row) === todayStr).map(row => row.name));
+  const missing = participants.filter(p => !submittedToday.has(p));
+
+  if (missing.length === 0) {
+    document.getElementById('missingList').innerHTML = '<p style="color:#27ae60;">✅ Everyone has submitted today! Great job team!</p>';
+  } else {
+    document.getElementById('missingList').innerHTML = missing.map(n => `<span style="display:inline-block;background:#fff3cd;padding:5px 10px;margin:4px;border-radius:5px;font-size:14px;">⏳ ${n}</span>`).join('');
+  }
+}
+
+function getStreak(name) {
+  const dates = allData.filter(r => r.name === name).map(r => getRawDate(r)).sort().reverse();
+  if (dates.length === 0) return 0;
+  let streak = 1;
+  for (let i = 0; i < dates.length - 1; i++) {
+    const curr = parseDate(dates[i]);
+    const prev = parseDate(dates[i + 1]);
+    const diff = (curr - prev) / (1000 * 60 * 60 * 24);
+    if (diff === 1) streak++;
+    else break;
+  }
+  return streak;
+}
+
+function updateTrendChart() {
+  const selected = document.getElementById('trendFilter').value;
+
+  // Get all unique dates sorted
+  const allDates = [...new Set(allData.map(r => getRawDate(r)))].sort();
+
+  let datasets = [];
+  const colors = ['#e74c3c','#3498db','#27ae60','#f39c12','#9b59b6','#1abc9c','#e67e22','#2980b9','#d35400'];
+
+  if (selected === 'all') {
+    // Show average per day
+    const avgData = allDates.map(date => {
+      const dayEntries = allData.filter(r => getRawDate(r) === date);
+      const total = dayEntries.reduce((s, r) => s + (Number(r.steps) || 0), 0);
+      return dayEntries.length ? Math.round(total / dayEntries.length) : 0;
+    });
+    datasets.push({ label: 'Team Average', data: avgData, borderColor: '#3498db', fill: false, tension: 0.3 });
+  } else {
+    const personData = allDates.map(date => {
+      const entry = allData.find(r => r.name === selected && getRawDate(r) === date);
+      return entry ? Number(entry.steps) || 0 : 0;
+    });
+    datasets.push({ label: selected, data: personData, borderColor: '#27ae60', fill: false, tension: 0.3 });
+  }
+
+  const labels = allDates.map(d => { const p = d.split('-'); return p[2] + '/' + p[1]; });
+
+  if (trendChart) trendChart.destroy();
+  trendChart = new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: true } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+
+  // Populate trend filter dropdown
+  const select = document.getElementById('trendFilter');
+  const currentVal = select.value;
+  select.innerHTML = '<option value="all">All (Average)</option>' + 
+    participants.map(p => `<option value="${p}">${p}</option>`).join('');
+  select.value = currentVal || 'all';
+}
+
+function showConfetti() {
+  const canvas = document.createElement('canvas');
+  canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;';
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const pieces = [];
+  const colors2 = ['#e74c3c','#3498db','#27ae60','#f39c12','#9b59b6','#e67e22','#1abc9c'];
+  for (let i = 0; i < 150; i++) {
+    pieces.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height - canvas.height,
+      r: Math.random() * 6 + 4,
+      color: colors2[Math.floor(Math.random() * colors2.length)],
+      vy: Math.random() * 3 + 2,
+      vx: Math.random() * 2 - 1
+    });
+  }
+
+  let frames = 0;
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pieces.forEach(p => {
+      p.y += p.vy;
+      p.x += p.vx;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.fill();
+    });
+    frames++;
+    if (frames < 120) requestAnimationFrame(animate);
+    else document.body.removeChild(canvas);
+  }
+  animate();
+}
+
+function toggleDarkMode() {
+  document.body.classList.toggle('dark-mode');
+  const btn = document.getElementById('darkModeBtn');
+  if (document.body.classList.contains('dark-mode')) {
+    btn.textContent = '☀️ Light Mode';
+    sessionStorage.setItem('walkflix_dark', 'true');
+  } else {
+    btn.textContent = '🌙 Dark Mode';
+    sessionStorage.setItem('walkflix_dark', 'false');
+  }
+}
+
+function logout() {
+  sessionStorage.removeItem('walkflix_auth');
+  sessionStorage.removeItem('walkflix_dark');
+  document.body.classList.remove('dark-mode');
+  document.getElementById('dashboard').classList.add('hidden');
+  document.getElementById('loginScreen').style.display = 'block';
+  document.getElementById('password').value = '';
 }
 
 </script>
