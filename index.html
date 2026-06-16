@@ -271,6 +271,7 @@ img {
         <th>Date</th>
         <th>Steps</th>
         <th>Screenshot</th>
+        <th>Action</th>
       </tr>
     </thead>
     <tbody id="tableBody"></tbody>
@@ -281,7 +282,7 @@ img {
 
 <script>
 
-const API = "https://script.google.com/macros/s/AKfycbyl47tLwD3GYzn0Yxne5FnJHdP6y9Geu2E-6uFJdBcE33u1YLyESSIGnc2NJjHdh7Ggiw/exec";
+const API = "https://script.google.com/macros/s/AKfycby794bVSKiVsOSgCh9-wLXdFtXZxXdRUfcqAFi89IMT5Ptdf3e6GdYnrKaCQPCh-72faw/exec";
 
 let stepsChart = null;
 let allData = [];
@@ -366,12 +367,15 @@ function renderTable() {
     const imgUrl = row.image || '';
     const match = imgUrl.match(/\/d\/([^/]+)/);
     const thumbUrl = match ? 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w100' : imgUrl;
+    // Get raw date in yyyy-mm-dd for edit
+    const rawDate = isNaN(d) ? row.date : d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
     html += `
       <tr>
         <td>${row.name}</td>
         <td>${dateStr}</td>
         <td>${row.steps}</td>
         <td><a href="${imgUrl}" target="_blank"><img src="${thumbUrl}" onerror="this.outerHTML='<a href=${imgUrl} target=_blank>View</a>'" /></a></td>
+        <td><button onclick="editEntry('${row.name}','${rawDate}','${row.steps}')" style="width:auto;padding:6px 12px;font-size:13px;">✏️ Edit</button></td>
       </tr>
     `;
   });
@@ -381,6 +385,15 @@ function renderTable() {
 function clearFilter() {
   document.getElementById('filterDate').value = '';
   renderTable();
+}
+
+function editEntry(name, date, steps) {
+  document.getElementById('name').value = name;
+  document.getElementById('date').value = date;
+  document.getElementById('steps').value = steps;
+  document.getElementById('file').value = '';
+  window.scrollTo({top: 0, behavior: 'smooth'});
+  alert('Entry loaded for editing. Update the steps/screenshot and click Submit to save changes.');
 }
 
 function downloadWeekData() {
