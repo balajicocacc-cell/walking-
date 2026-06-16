@@ -212,7 +212,7 @@ img {
   <input id="steps" type="number" placeholder="Steps">
   <input id="file" type="file">
 
-  <button onclick="submitSteps()">Submit</button>
+  <button id="submitBtn" onclick="submitSteps()">Submit</button>
 </div>
 
 <!-- STATS -->
@@ -324,6 +324,10 @@ async function submitSteps(){
     return;
   }
 
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Please wait...';
+
   const reader = new FileReader();
 
   reader.onload = async function(){
@@ -345,6 +349,8 @@ async function submitSteps(){
       body: JSON.stringify(payload)
     });
 
+    btn.disabled = false;
+    btn.textContent = 'Submit';
     alert("Submitted successfully!");
     loadData();
   };
