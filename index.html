@@ -8,6 +8,7 @@
 body {
   font-family: Arial;
   margin: 0;
+  padding: 0;
   background: linear-gradient(135deg, #dff6ff, #ffffff);
 }
 
@@ -25,9 +26,9 @@ h2 {
 .card {
   background: white;
   padding: 15px;
-  margin: 15px 0;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  margin: 10px 0;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
 
 input, select {
@@ -56,7 +57,7 @@ button:hover {
 table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 10px;
+  margin-top: 20px;
 }
 
 th, td {
@@ -71,7 +72,7 @@ th {
 }
 
 img {
-  width: 70px;
+  width: 80px;
   border-radius: 6px;
 }
 </style>
@@ -84,7 +85,6 @@ img {
 
 <h2>🚶 Walking Challenge Dashboard</h2>
 
-<!-- FORM -->
 <div class="card">
 
   <select id="name">
@@ -108,10 +108,8 @@ img {
 
 </div>
 
-<!-- TABLE -->
 <div class="card">
   <h3>📊 Daily Entries</h3>
-
   <table>
     <thead>
       <tr>
@@ -123,79 +121,73 @@ img {
     </thead>
     <tbody id="tableBody"></tbody>
   </table>
-
 </div>
 
 </div>
 
 <script>
 
-const API = "https://script.google.com/macros/s/AKfycbxMUhXZ9EBDamYFhYFrRiIuOsqQ1JqdiO63tItxAuXUBYYDypiO6mCRr7RwbpGS39E4pA/exec";
+const API = "https://script.google.com/macros/s/AKfycbyl47tLwD3GYzn0Yxne5FnJHdP6y9Geu2E-6uFJdBcE33u1YLyESSIGnc2NJjHdh7Ggiw/exec";
 
-/* SUBMIT STEPS */
+window.onload = () => {
+  loadData();
+};
+
 async function submitSteps(){
+  const file = document.getElementById('file').files[0];
 
- const file = document.getElementById('file').files[0];
+  if(!file){
+    alert("Please upload screenshot");
+    return;
+  }
 
- if(!file){
-   alert("Please upload screenshot");
-   return;
- }
+  const reader = new FileReader();
 
- const reader = new FileReader();
+  reader.onload = async function(){
+    const base64 = reader.result.split(',')[1];
 
- reader.onload = async function(){
+    const payload = {
+      name: document.getElementById('name').value,
+      date: document.getElementById('date').value,
+      steps: document.getElementById('steps').value,
+      fileName: file.name,
+      mimeType: file.type,
+      image: base64
+    };
 
-   const base64 = reader.result.split(',')[1];
+    await fetch(API, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
 
-   const payload = {
-     name: document.getElementById('name').value,
-     date: document.getElementById('date').value,
-     steps: document.getElementById('steps').value,
-     fileName: file.name,
-     mimeType: file.type,
-     image: base64
-   };
+    alert("Submitted successfully!");
+    loadData();
+  };
 
-   await fetch(API, {
-     method: "POST",
-     mode: "no-cors",
-     headers: {
-       "Content-Type": "application/json"
-     },
-     body: JSON.stringify(payload)
-   });
-
-   alert("Submitted successfully!");
-   loadData();
- };
-
- reader.readAsDataURL(file);
+  reader.readAsDataURL(file);
 }
 
-/* LOAD TABLE */
 async function loadData(){
+  const res = await fetch(API);
+  const data = await res.json();
 
- const res = await fetch(API);
- const data = await res.json();
+  let html = "";
 
- let html = "";
+  data.forEach(row => {
+    html += `
+      <tr>
+        <td>${row.name}</td>
+        <td>${row.date}</td>
+        <td>${row.steps}</td>
+        <td><img src="${row.image}" /></td>
+      </tr>
+    `;
+  });
 
- data.forEach(row => {
-   html += `
-     <tr>
-       <td>${row.name}</td>
-       <td>${row.date}</td>
-       <td>${row.steps}</td>
-       <td><img src="${row.image}" /></td>
-     </tr>
-   `;
- });
-
- document.getElementById("tableBody").innerHTML = html;
+  document.getElementById("tableBody").innerHTML = html;
 }
-
-loadData();
 
 </script>
 
