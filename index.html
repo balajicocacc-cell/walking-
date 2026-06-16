@@ -277,10 +277,12 @@ async function loadData(){
   // Render table
   let html = "";
   data.forEach(row => {
+    const d = new Date(row.date);
+    const dateStr = isNaN(d) ? row.date : d.toLocaleDateString('en-GB');
     html += `
       <tr>
         <td>${row.name}</td>
-        <td>${row.date}</td>
+        <td>${dateStr}</td>
         <td>${row.steps}</td>
         <td><img src="${row.image}" /></td>
       </tr>
