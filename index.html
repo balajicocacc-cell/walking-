@@ -19,6 +19,39 @@ body {
   padding: 20px;
 }
 
+.login-container {
+  max-width: 400px;
+  margin: 100px auto;
+  padding: 30px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+  text-align: center;
+}
+
+.login-container h2 {
+  margin-bottom: 20px;
+}
+
+.login-container input {
+  margin: 10px 0;
+}
+
+.login-container button {
+  margin-top: 10px;
+}
+
+.error-msg {
+  color: #e74c3c;
+  font-size: 14px;
+  margin-top: 8px;
+  display: none;
+}
+
+.hidden {
+  display: none;
+}
+
 h2 {
   text-align: center;
   color: #2c3e50;
@@ -145,7 +178,17 @@ img {
 
 <body>
 
-<div class="container">
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" class="login-container">
+  <h2>🔐 Walkflix Team 1</h2>
+  <p>Enter password to access the dashboard</p>
+  <input id="password" type="password" placeholder="Password" onkeydown="if(event.key==='Enter') login()">
+  <button onclick="login()">Login</button>
+  <p class="error-msg" id="loginError">Incorrect password!</p>
+</div>
+
+<!-- DASHBOARD (hidden by default) -->
+<div class="container hidden" id="dashboard">
 
 <h2>🚶 Walkflix Team 1 - Walking Challenge Dashboard</h2>
 
@@ -242,8 +285,26 @@ const API = "https://script.google.com/macros/s/AKfycbyl47tLwD3GYzn0Yxne5FnJHdP6
 let stepsChart = null;
 let allData = [];
 
+const PASS = "walkflix2025";
+
+function login() {
+  const input = document.getElementById('password').value;
+  if (input === PASS) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('dashboard').classList.remove('hidden');
+    sessionStorage.setItem('walkflix_auth', 'true');
+    loadData();
+  } else {
+    document.getElementById('loginError').style.display = 'block';
+  }
+}
+
 window.onload = () => {
-  loadData();
+  if (sessionStorage.getItem('walkflix_auth') === 'true') {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('dashboard').classList.remove('hidden');
+    loadData();
+  }
 };
 
 async function submitSteps(){
@@ -306,7 +367,7 @@ function renderTable() {
         <td>${row.name}</td>
         <td>${dateStr}</td>
         <td>${row.steps}</td>
-        <td><img src="${row.image}" /></td>
+        <td><a href="${row.image}" target="_blank">View</a></td>
       </tr>
     `;
   });
