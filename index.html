@@ -285,7 +285,7 @@ const API = "https://script.google.com/macros/s/AKfycbyl47tLwD3GYzn0Yxne5FnJHdP6
 let stepsChart = null;
 let allData = [];
 
-const PASS = "walkflix2025";
+const PASS = "walkflix2026";
 
 function login() {
   const input = document.getElementById('password').value;
@@ -362,12 +362,15 @@ function renderTable() {
   filtered.forEach(row => {
     const d = new Date(row.date);
     const dateStr = isNaN(d) ? row.date : d.toLocaleDateString('en-GB');
+    const imgUrl = row.image || '';
+    const match = imgUrl.match(/\/d\/([^/]+)/);
+    const thumbUrl = match ? 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w100' : imgUrl;
     html += `
       <tr>
         <td>${row.name}</td>
         <td>${dateStr}</td>
         <td>${row.steps}</td>
-        <td><a href="${row.image}" target="_blank">View</a></td>
+        <td><a href="${imgUrl}" target="_blank"><img src="${thumbUrl}" onerror="this.outerHTML='<a href=${imgUrl} target=_blank>View</a>'" /></a></td>
       </tr>
     `;
   });
