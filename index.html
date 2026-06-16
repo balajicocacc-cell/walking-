@@ -289,7 +289,7 @@ img {
 
 <script>
 
-const API = "https://script.google.com/macros/s/AKfycbxVAszbY1SzUda_j37FExwJiNzKWYS1et8O15zCen1C2-tvq96Tk35G9ObLMfQtm0bCxg/exec";
+const API = "https://script.google.com/macros/s/AKfycbyl47tLwD3GYzn0Yxne5FnJHdP6y9Geu2E-6uFJdBcE33u1YLyESSIGnc2NJjHdh7Ggiw/exec";
 
 let stepsChart = null;
 let allData = [];
@@ -352,12 +352,28 @@ async function submitSteps(){
   reader.readAsDataURL(file);
 }
 
+function getRawDate(row) {
+  if (row.rawDate) return row.rawDate;
+  // Fallback: parse dd-MM-yyyy to yyyy-MM-dd
+  if (row.date && row.date.includes('-')) {
+    const parts = row.date.split('-');
+    if (parts[0].length === 2) return parts[2] + '-' + parts[1] + '-' + parts[0];
+  }
+  return row.date || '';
+}
+
+function parseDate(dateStr) {
+  // Parse yyyy-MM-dd without timezone shift
+  const parts = dateStr.split('-');
+  return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+}
+
 function renderTable() {
   const filterDate = document.getElementById('filterDate').value;
   let filtered = allData;
 
   if (filterDate) {
-    filtered = allData.filter(row => row.rawDate === filterDate);
+    filtered = allData.filter(row => getRawDate(row) === filterDate);
   }
 
   let html = "";
@@ -371,7 +387,7 @@ function renderTable() {
         <td>${row.date}</td>
         <td>${row.steps}</td>
         <td><a href="${imgUrl}" target="_blank"><img src="${thumbUrl}" onerror="this.outerHTML='<a href=${imgUrl} target=_blank>View</a>'" /></a></td>
-        <td><button onclick="editEntry('${row.name}','${row.rawDate}','${row.steps}')" style="width:auto;padding:6px 12px;font-size:13px;">✏️ Edit</button></td>
+        <td><button onclick="editEntry('${row.name}','${getRawDate(row)}','${row.steps}')" style="width:auto;padding:6px 12px;font-size:13px;">✏️ Edit</button></td>
       </tr>
     `;
   });
@@ -399,7 +415,9 @@ function downloadWeekData() {
   if (weekVal !== 'all') {
     const [selYear, selWeek] = weekVal.split('-W').map(Number);
     filtered = allData.filter(row => {
-      const [yr, wk] = getWeekNumber(new Date(row.rawDate));
+      const rd = getRawDate(row);
+      if (!rd) return false;
+      const [yr, wk] = getWeekNumber(parseDate(rd));
       return yr === selYear && wk === selWeek;
     });
   }
@@ -479,8 +497,9 @@ function getWeekRange(year, week) {
 function populateWeekFilter() {
   const weeks = new Set();
   allData.forEach(row => {
-    if (row.rawDate) {
-      const [yr, wk] = getWeekNumber(new Date(row.rawDate));
+    const rd = getRawDate(row);
+    if (rd) {
+      const [yr, wk] = getWeekNumber(parseDate(rd));
       weeks.add(yr + "-W" + String(wk).padStart(2, '0'));
     }
   });
@@ -503,8 +522,9 @@ function updateStats() {
   if (weekVal !== 'all') {
     const [selYear, selWeek] = weekVal.split('-W').map(Number);
     filtered = allData.filter(row => {
-      if (!row.rawDate) return false;
-      const [yr, wk] = getWeekNumber(new Date(row.rawDate));
+      const rd = getRawDate(row);
+      if (!rd) return false;
+      const [yr, wk] = getWeekNumber(parseDate(rd));
       return yr === selYear && wk === selWeek;
     });
   }
@@ -553,8 +573,9 @@ function updateChart() {
   if (weekVal !== 'all') {
     const [selYear, selWeek] = weekVal.split('-W').map(Number);
     filtered = allData.filter(row => {
-      if (!row.rawDate) return false;
-      const [yr, wk] = getWeekNumber(new Date(row.rawDate));
+      const rd = getRawDate(row);
+      if (!rd) return false;
+      const [yr, wk] = getWeekNumber(parseDate(rd));
       return yr === selYear && wk === selWeek;
     });
   }
