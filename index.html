@@ -78,14 +78,17 @@ async function submitSteps(){
 
      image:base64
    };
+   await fetch(API, {
+    method: "POST",
+    mode: "no-cors",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
 
-   await fetch(API,{
-      method:'POST',
-      body:JSON.stringify(payload)
-   });
-
-   alert('Submitted');
-   loadLeaderboard();
+  alert("Submitted");
+  loadLeaderboard();
  };
 
  reader.readAsDataURL(file);
