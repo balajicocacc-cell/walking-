@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Walking Challenge</title>
+
+<style>
+body{
+  font-family:Arial;
+  max-width:700px;
+  margin:auto;
+  padding:20px;
+}
+input{
+  width:100%;
+  margin:10px 0;
+  padding:10px;
+}
+button{
+  padding:10px 20px;
+}
+</style>
+
+</head>
+<body>
+
+<h2>Walking Challenge</h2>
+
+<input id="name" placeholder="Name">
+
+<input id="date" type="date">
+
+<input id="steps" type="number"
+placeholder="Steps">
+
+<input id="file" type="file">
+
+<button onclick="submitSteps()">
+Submit
+</button>
+
+<hr>
+
+<h2>Leaderboard</h2>
+
+<div id="leaderboard"></div>
+
+<script>
+
+const API =
+"https://script.google.com/macros/s/AKfycbxNo57D1S6NLOg_E_tl2x3hjklgQzZcEnRP11xj0J8S_Jjpx7o8sqwBT0YyFWNh1N8sfw/exec";
+
+async function submitSteps(){
+
+ const file =
+ document.getElementById('file').files[0];
+
+ const reader = new FileReader();
+
+ reader.onload = async function(){
+
+   const base64 =
+   reader.result.split(',')[1];
+
+   const payload = {
+     name:
+       document.getElementById('name').value,
+
+     date:
+       document.getElementById('date').value,
+
+     steps:
+       document.getElementById('steps').value,
+
+     fileName:file.name,
+
+     mimeType:file.type,
+
+     image:base64
+   };
+
+   await fetch(API,{
+      method:'POST',
+      body:JSON.stringify(payload)
+   });
+
+   alert('Submitted');
+   loadLeaderboard();
+ };
+
+ reader.readAsDataURL(file);
+}
+
+async function loadLeaderboard(){
+
+ const res = await fetch(API);
+
+ const data = await res.json();
+
+ let html = "<ol>";
+
+ Object.entries(data)
+   .sort((a,b)=>b[1]-a[1])
+   .forEach(x=>{
+
+      html +=
+      `<li>${x[0]} - ${x[1]} steps</li>`;
+   });
+
+ html += "</ol>";
+
+ document.getElementById(
+   "leaderboard"
+ ).innerHTML = html;
+}
+
+loadLeaderboard();
+
+</script>
+
+</body>
+</html>
