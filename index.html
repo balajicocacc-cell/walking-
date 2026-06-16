@@ -221,6 +221,11 @@ body.dark-mode .leaderboard-row {
 body.dark-mode .leaderboard-name, body.dark-mode .leaderboard-steps {
   color: #eee;
 }
+
+body.dark-mode #missingList span {
+  background: #3d3d00 !important;
+  color: #ffc107;
+}
 </style>
 
 </head>
@@ -240,12 +245,17 @@ body.dark-mode .leaderboard-name, body.dark-mode .leaderboard-steps {
 <div class="container hidden" id="dashboard">
 
 <h2>🚶 Walkflix Team 1 - Walking Challenge Dashboard</h2>
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
   <div>
-    <label>Week: </label>
-    <select id="weekFilter" style="width:auto;display:inline-block;" onchange="onWeekChange()">
+    <label>Filter by: </label>
+    <select id="filterType" style="width:auto;display:inline-block;" onchange="toggleFilterType()">
+      <option value="week">Week</option>
+      <option value="date">Date</option>
+    </select>
+    <select id="weekFilter" style="width:auto;display:inline-block;margin-left:8px;" onchange="onWeekChange()">
       <option value="all">All Time</option>
     </select>
+    <input id="globalDate" type="date" style="width:auto;display:inline-block;margin-left:8px;display:none;" onchange="onWeekChange()">
     <button onclick="downloadWeekData()" style="width:auto;display:inline-block;padding:8px 16px;margin-left:8px;">⬇️ Download Report</button>
   </div>
   <button onclick="toggleDarkMode()" id="darkModeBtn" style="width:auto;padding:8px 14px;font-size:13px;background:#34495e;">🌙 Dark Mode</button>
@@ -278,7 +288,10 @@ body.dark-mode .leaderboard-name, body.dark-mode .leaderboard-steps {
 
 <!-- WHO HASN'T SUBMITTED TODAY -->
 <div class="card" id="missingCard">
-  <h3>⚠️ Who hasn't submitted today?</h3>
+  <h3>⚠️ Who hasn't submitted?</h3>
+  <div style="margin-bottom:10px;">
+    <input id="missingDate" type="date" style="width:auto;display:inline-block;" onchange="updateMissing()">
+  </div>
   <div id="missingList"></div>
 </div>
 
@@ -796,19 +809,45 @@ function onWeekChange() {
   updateSummary();
 }
 
-function updateStats() {
-  const weekVal = document.getElementById('weekFilter').value;
-  let filtered = allData;
-
-  if (weekVal !== 'all') {
-    const [selYear, selWeek] = weekVal.split('-W').map(Number);
-    filtered = allData.filter(row => {
-      const rd = getRawDate(row);
-      if (!rd) return false;
-      const [yr, wk] = getWeekNumber(parseDate(rd));
-      return yr === selYear && wk === selWeek;
-    });
+function toggleFilterType() {
+  const type = document.getElementById('filterType').value;
+  if (type === 'week') {
+    document.getElementById('weekFilter').style.display = 'inline-block';
+    document.getElementById('globalDate').style.display = 'none';
+    document.getElementById('globalDate').value = '';
+  } else {
+    document.getElementById('weekFilter').style.display = 'none';
+    document.getElementById('globalDate').style.display = 'inline-block';
   }
+  onWeekChange();
+}
+
+function getGlobalFiltered() {
+  const type = document.getElementById('filterType').value;
+
+  if (type === 'date') {
+    const dateVal = document.getElementById('globalDate').value;
+    if (dateVal) {
+      return allData.filter(row => getRawDate(row) === dateVal);
+    }
+    return allData;
+  } else {
+    const weekVal = document.getElementById('weekFilter').value;
+    if (weekVal !== 'all') {
+      const [selYear, selWeek] = weekVal.split('-W').map(Number);
+      return allData.filter(row => {
+        const rd = getRawDate(row);
+        if (!rd) return false;
+        const [yr, wk] = getWeekNumber(parseDate(rd));
+        return yr === selYear && wk === selWeek;
+      });
+    }
+    return allData;
+  }
+}
+
+function updateStats() {
+  const filtered = getGlobalFiltered();
 
   // Calculate totals per participant
   const totals = {};
@@ -845,18 +884,7 @@ function updateStats() {
 }
 
 function updateLeaderboard() {
-  const weekVal = document.getElementById('weekFilter').value;
-  let filtered = allData;
-
-  if (weekVal !== 'all') {
-    const [selYear, selWeek] = weekVal.split('-W').map(Number);
-    filtered = allData.filter(row => {
-      const rd = getRawDate(row);
-      if (!rd) return false;
-      const [yr, wk] = getWeekNumber(parseDate(rd));
-      return yr === selYear && wk === selWeek;
-    });
-  }
+  const filtered = getGlobalFiltered();
 
   const totals = {};
   filtered.forEach(row => {
@@ -881,18 +909,7 @@ function updateLeaderboard() {
 }
 
 function updateSummary() {
-  const weekVal = document.getElementById('weekFilter').value;
-  let filtered = allData;
-
-  if (weekVal !== 'all') {
-    const [selYear, selWeek] = weekVal.split('-W').map(Number);
-    filtered = allData.filter(row => {
-      const rd = getRawDate(row);
-      if (!rd) return false;
-      const [yr, wk] = getWeekNumber(parseDate(rd));
-      return yr === selYear && wk === selWeek;
-    });
-  }
+  const filtered = getGlobalFiltered();
 
   const totals = {};
   filtered.forEach(row => {
@@ -965,18 +982,7 @@ function downloadSummary() {
 }
 
 function updateChart() {
-  const weekVal = document.getElementById('weekFilter').value;
-  let filtered = allData;
-
-  if (weekVal !== 'all') {
-    const [selYear, selWeek] = weekVal.split('-W').map(Number);
-    filtered = allData.filter(row => {
-      const rd = getRawDate(row);
-      if (!rd) return false;
-      const [yr, wk] = getWeekNumber(parseDate(rd));
-      return yr === selYear && wk === selWeek;
-    });
-  }
+  const filtered = getGlobalFiltered();
 
   const totals = {};
   filtered.forEach(row => {
@@ -1014,13 +1020,21 @@ function updateChart() {
 }
 
 function updateMissing() {
+  const missingDateInput = document.getElementById('missingDate');
+  if (!missingDateInput.value) {
+    const today = new Date();
+    missingDateInput.value = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+  }
+  // Prevent future dates
   const today = new Date();
-  const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-  const submittedToday = new Set(allData.filter(row => getRawDate(row) === todayStr).map(row => row.name));
-  const missing = participants.filter(p => !submittedToday.has(p));
+  missingDateInput.max = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+
+  const selectedDate = missingDateInput.value;
+  const submittedOnDate = new Set(allData.filter(row => getRawDate(row) === selectedDate).map(row => row.name));
+  const missing = participants.filter(p => !submittedOnDate.has(p));
 
   if (missing.length === 0) {
-    document.getElementById('missingList').innerHTML = '<p style="color:#27ae60;">✅ Everyone has submitted today! Great job team!</p>';
+    document.getElementById('missingList').innerHTML = '<p style="color:#27ae60;">✅ Everyone has submitted! Great job team!</p>';
   } else {
     document.getElementById('missingList').innerHTML = missing.map(n => `<span style="display:inline-block;background:#fff3cd;padding:5px 10px;margin:4px;border-radius:5px;font-size:14px;">⏳ ${n}</span>`).join('');
   }
