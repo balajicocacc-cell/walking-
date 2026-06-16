@@ -210,7 +210,10 @@ img {
 
   <input id="date" type="date">
   <input id="steps" type="number" placeholder="Steps">
+  <label style="font-size:13px;color:#555;">Screenshot (required):</label>
   <input id="file" type="file">
+  <label style="font-size:13px;color:#555;">Walking Selfie (optional):</label>
+  <input id="selfie" type="file">
 
   <button id="submitBtn" onclick="submitSteps()">Submit</button>
 </div>
@@ -223,9 +226,13 @@ img {
     <select id="weekFilter" style="width:auto;display:inline-block;" onchange="updateStats()">
       <option value="all">All Time</option>
     </select>
-    <button onclick="downloadWeekData()" style="width:auto;display:inline-block;padding:8px 16px;margin-left:8px;">⬇️ Download</button>
+    <button onclick="downloadWeekData()" style="width:auto;display:inline-block;padding:8px 16px;margin-left:8px;">⬇️ Download Report</button>
   </div>
-  <div class="stats-grid">
+  <div id="loadingMsg" style="text-align:center;padding:40px;font-size:18px;display:flex;flex-direction:column;align-items:center;gap:10px;">
+    <img src="https://i.gifer.com/ZZ5H.gif" style="width:50px;height:50px;border-radius:0;">
+    <span>Loading data...</span>
+  </div>
+  <div class="stats-grid" id="statsGrid" style="display:none;">
     <div class="stat-box">
       <h4>Total Steps</h4>
       <span id="statTotalSteps">0</span>
@@ -278,6 +285,7 @@ img {
         <th>Date</th>
         <th>Steps</th>
         <th>Screenshot</th>
+        <th>Selfie</th>
         <th>Action</th>
       </tr>
     </thead>
@@ -285,16 +293,70 @@ img {
   </table>
 </div>
 
+<!-- SUMMARY TABLE -->
+<div class="card">
+  <h3>📝 Weekly Summary</h3>
+  <div style="margin-bottom:10px;">
+    <label>Week: </label>
+    <select id="summaryWeekFilter" style="width:auto;display:inline-block;" onchange="updateSummary()">
+      <option value="all">All Time</option>
+    </select>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Name</th>
+        <th>Total Steps</th>
+      </tr>
+    </thead>
+    <tbody id="summaryBody"></tbody>
+  </table>
+</div>
+
 </div>
 
 <script>
 
-const API = "https://script.google.com/macros/s/AKfycbxb3WlT70NqlStWbyoO1f_al8ZXMgd1k1WGYk7ZE7lNMnGyZClcpydbtAcOQZstiwUq3A/exec";
+const API = "https://script.google.com/macros/s/AKfycbzEgK4-g1a-_tjMqsgH7cWTIzCpa6lVQYbiPcQq7H-Eo8yTUdOIf3pLwf89LjraNyCRQQ/exec";
 
 let stepsChart = null;
 let allData = [];
 
 const PASS = "walkflix2026";
+
+const motivationalQuotes = [
+  "🔥 Every step counts! You're crushing it!",
+  "👟 Walk today, thank yourself tomorrow!",
+  "💪 Champions are made one step at a time!",
+  "🏆 You're one step closer to the top!",
+  "🚀 Keep walking, keep winning!",
+  "⭐ Small steps lead to big victories!",
+  "🎯 Consistency is the key to greatness!",
+  "🌟 Your future self will thank you for this!",
+  "💥 Beast mode: ON! Keep stepping!",
+  "🙌 Walking legend in the making!",
+  "🎉 Another day, another W!",
+  "🦵 Those legs were made for walking!",
+  "📈 Leveling up one step at a time!",
+  "🥇 Winners walk the walk!",
+  "✨ You're not just walking, you're inspiring!",
+  "🌍 One step for you, one giant leap for the team!",
+  "🧬 Walking is the best medicine!",
+  "💫 You showed up. That's half the battle!",
+  "🧘 Mind clear, legs moving, goals smashing!",
+  "🌈 The journey of a thousand miles begins with your steps today!",
+  "🛤️ The road to fitness is paved with daily walks!",
+  "🤩 Look at you go! Unstoppable!",
+  "🏋️‍♂️ No shortcuts, just footsteps. Respect!",
+  "🧱 Building a healthier you, brick by brick!",
+  "🌞 Rise, walk, conquer, repeat!",
+  "💯 100% effort logged. You're a star!",
+  "👣 Your footprints are writing a success story!",
+  "🎤 Drop the mic, you just walked the walk!",
+  "🤾 Fitness isn't a destination, it's your daily walk!",
+  "🌚 Even on tough days, you still showed up. Legend!"
+];
 
 function login() {
   const input = document.getElementById('password').value;
@@ -328,6 +390,8 @@ async function submitSteps(){
   btn.disabled = true;
   btn.textContent = '⏳ Please wait...';
 
+  const selfieFile = document.getElementById('selfie').files[0];
+
   const reader = new FileReader();
 
   reader.onload = async function(){
@@ -339,8 +403,22 @@ async function submitSteps(){
       steps: document.getElementById('steps').value,
       fileName: file.name,
       mimeType: file.type,
-      image: base64
+      image: base64,
+      selfie: '',
+      selfieFileName: '',
+      selfieMimeType: ''
     };
+
+    if (selfieFile) {
+      const selfieBase64 = await new Promise(resolve => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result.split(',')[1]);
+        r.readAsDataURL(selfieFile);
+      });
+      payload.selfie = selfieBase64;
+      payload.selfieFileName = selfieFile.name;
+      payload.selfieMimeType = selfieFile.type;
+    }
 
     await fetch(API, {
       method: "POST",
@@ -351,7 +429,7 @@ async function submitSteps(){
 
     btn.disabled = false;
     btn.textContent = 'Submit';
-    alert("Submitted successfully!");
+    alert(motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)]);
     loadData();
   };
 
@@ -387,17 +465,22 @@ function renderTable() {
     const imgUrl = row.image || '';
     const match = imgUrl.match(/\/d\/([^/]+)/);
     const thumbUrl = match ? 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w100' : imgUrl;
+    const selfieUrl = row.selfie || '';
+    const selfieMatch = selfieUrl.match(/\/d\/([^/]+)/);
+    const selfieThumb = selfieMatch ? 'https://drive.google.com/thumbnail?id=' + selfieMatch[1] + '&sz=w100' : '';
+    const selfieCell = selfieThumb ? `<a href="${selfieUrl}" target="_blank"><img src="${selfieThumb}" onerror="this.outerHTML='-'" /></a>` : '-';
     html += `
       <tr>
         <td>${row.name}</td>
         <td>${row.date}</td>
         <td>${row.steps}</td>
         <td><a href="${imgUrl}" target="_blank"><img src="${thumbUrl}" onerror="this.outerHTML='<a href=${imgUrl} target=_blank>View</a>'" /></a></td>
+        <td>${selfieCell}</td>
         <td><button onclick="editEntry('${row.name}','${getRawDate(row)}','${row.steps}')" style="width:auto;padding:6px 12px;font-size:13px;">✏️ Edit</button></td>
       </tr>
     `;
   });
-  document.getElementById("tableBody").innerHTML = html || '<tr><td colspan="5">No entries for this date</td></tr>';
+  document.getElementById("tableBody").innerHTML = html || '<tr><td colspan="6">No entries for this date</td></tr>';
 }
 
 function clearFilter() {
@@ -435,35 +518,83 @@ function downloadWeekData() {
 
   const weekLabel = weekVal === 'all' ? 'All Time' : document.getElementById('weekFilter').selectedOptions[0].text;
 
-  let rows = '';
+  // Group entries by date
+  const byDate = {};
   filtered.forEach(row => {
-    const imgUrl = row.image || '';
-    const match = imgUrl.match(/\/d\/([^/]+)/);
-    const thumbUrl = match ? 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w300' : imgUrl;
-    rows += `<tr>
-      <td>${row.name}</td>
-      <td>${row.date}</td>
-      <td>${row.steps}</td>
-      <td><img src="${thumbUrl}" style="max-width:200px;max-height:150px;"></td>
-    </tr>`;
+    const dateKey = row.date || getRawDate(row);
+    if (!byDate[dateKey]) byDate[dateKey] = [];
+    byDate[dateKey].push(row);
+  });
+
+  // Sort dates
+  const sortedDates = Object.keys(byDate).sort((a, b) => {
+    const ra = getRawDate(byDate[a][0]);
+    const rb = getRawDate(byDate[b][0]);
+    return ra.localeCompare(rb);
+  });
+
+  // Build daily tables
+  let dailyHtml = '';
+  sortedDates.forEach(date => {
+    dailyHtml += `<h3>📅 ${date}</h3><table>
+      <thead><tr><th>Name</th><th>Steps</th><th>Screenshot</th><th>Selfie</th></tr></thead><tbody>`;
+    byDate[date].forEach(row => {
+      const imgUrl = row.image || '';
+      const match = imgUrl.match(/\/d\/([^/]+)/);
+      const thumbUrl = match ? 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w300' : imgUrl;
+      const downloadUrl = match ? 'https://drive.google.com/uc?export=download&id=' + match[1] : imgUrl;
+      const selfieUrl = row.selfie || '';
+      const selfieMatch = selfieUrl.match(/\/d\/([^/]+)/);
+      const selfieThumb = selfieMatch ? 'https://drive.google.com/thumbnail?id=' + selfieMatch[1] + '&sz=w300' : '';
+      const selfieDownload = selfieMatch ? 'https://drive.google.com/uc?export=download&id=' + selfieMatch[1] : '';
+      const selfieCell = selfieThumb ? `<img src="${selfieThumb}" style="max-width:200px;max-height:150px;"><br><a href="${selfieDownload}" target="_blank" style="font-size:12px;">⬇️ Download</a>` : '-';
+      dailyHtml += `<tr>
+        <td>${row.name}</td>
+        <td>${row.steps}</td>
+        <td>
+          <img src="${thumbUrl}" style="max-width:200px;max-height:150px;"><br>
+          <a href="${downloadUrl}" target="_blank" style="font-size:12px;">⬇️ Download</a>
+        </td>
+        <td>${selfieCell}</td>
+      </tr>`;
+    });
+    dailyHtml += '</tbody></table>';
+  });
+
+  // Summary totals
+  const totals = {};
+  filtered.forEach(row => {
+    const steps = Number(row.steps) || 0;
+    totals[row.name] = (totals[row.name] || 0) + steps;
+  });
+  const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+
+  let summaryRows = '';
+  sorted.forEach((item, i) => {
+    summaryRows += `<tr><td>${i + 1}</td><td>${item[0]}</td><td>${item[1].toLocaleString()}</td></tr>`;
   });
 
   const html = `<!DOCTYPE html>
 <html><head><title>Walkflix Team 1 - ${weekLabel}</title>
 <style>
   body { font-family: Arial; padding: 20px; }
-  h2 { text-align: center; color: #2c3e50; }
-  table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+  h2, h3 { color: #2c3e50; }
+  h2 { text-align: center; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 30px; }
   th, td { padding: 10px; border: 1px solid #ddd; text-align: center; }
   th { background: #3498db; color: white; }
   img { max-width: 200px; max-height: 150px; border-radius: 6px; }
   @media print { button { display: none; } }
 </style></head><body>
-<h2>\ud83d\udeb6 Walkflix Team 1 - ${weekLabel}</h2>
-<button onclick="window.print()" style="padding:10px 20px;background:#27ae60;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;">\ud83d\udda8\ufe0f Print / Save as PDF</button>
+<h2>🚶 Walkflix Team 1 - ${weekLabel}</h2>
+<button onclick="window.print()" style="padding:10px 20px;background:#27ae60;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;margin-bottom:20px;">🖨️ Print / Save as PDF</button>
+
+${dailyHtml}
+
+<h3>📝 Weekly Summary</h3>
 <table>
-  <thead><tr><th>Name</th><th>Date</th><th>Steps</th><th>Screenshot</th></tr></thead>
-  <tbody>${rows}</tbody>
+  <thead><tr><th>#</th><th>Name</th><th>Total Steps</th></tr></thead>
+  <tbody>${summaryRows}</tbody>
 </table>
 </body></html>`;
 
@@ -473,14 +604,21 @@ function downloadWeekData() {
 }
 
 async function loadData(){
+  document.getElementById('loadingMsg').style.display = 'block';
+  document.getElementById('statsGrid').style.display = 'none';
+
   const res = await fetch(API);
   const data = await res.json();
   allData = data;
+
+  document.getElementById('loadingMsg').style.display = 'none';
+  document.getElementById('statsGrid').style.display = 'grid';
 
   populateWeekFilter();
   renderTable();
   updateStats();
   updateChart();
+  updateSummary();
 }
 
 function getWeekNumber(d) {
@@ -519,6 +657,7 @@ function populateWeekFilter() {
 
   document.getElementById('weekFilter').innerHTML = weekOptions;
   document.getElementById('chartFilter').innerHTML = weekOptions;
+  document.getElementById('summaryWeekFilter').innerHTML = weekOptions;
 }
 
 function updateStats() {
@@ -570,6 +709,90 @@ function updateStats() {
     `;
   });
   document.getElementById("leaderboard").innerHTML = lbHtml || '<p>No data for this week</p>';
+}
+
+function updateSummary() {
+  const weekVal = document.getElementById('summaryWeekFilter').value;
+  let filtered = allData;
+
+  if (weekVal !== 'all') {
+    const [selYear, selWeek] = weekVal.split('-W').map(Number);
+    filtered = allData.filter(row => {
+      const rd = getRawDate(row);
+      if (!rd) return false;
+      const [yr, wk] = getWeekNumber(parseDate(rd));
+      return yr === selYear && wk === selWeek;
+    });
+  }
+
+  const totals = {};
+  filtered.forEach(row => {
+    const steps = Number(row.steps) || 0;
+    totals[row.name] = (totals[row.name] || 0) + steps;
+  });
+
+  const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+  let html = "";
+  sorted.forEach((item, i) => {
+    html += `<tr><td>${i + 1}</td><td>${item[0]}</td><td>${item[1].toLocaleString()}</td></tr>`;
+  });
+  document.getElementById("summaryBody").innerHTML = html || '<tr><td colspan="3">No data</td></tr>';
+}
+
+function downloadSummary() {
+  const weekVal = document.getElementById('summaryWeekFilter').value;
+  let filtered = allData;
+
+  if (weekVal !== 'all') {
+    const [selYear, selWeek] = weekVal.split('-W').map(Number);
+    filtered = allData.filter(row => {
+      const rd = getRawDate(row);
+      if (!rd) return false;
+      const [yr, wk] = getWeekNumber(parseDate(rd));
+      return yr === selYear && wk === selWeek;
+    });
+  }
+
+  const totals = {};
+  filtered.forEach(row => {
+    const steps = Number(row.steps) || 0;
+    totals[row.name] = (totals[row.name] || 0) + steps;
+  });
+
+  const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+  const weekLabel = weekVal === 'all' ? 'All Time' : document.getElementById('summaryWeekFilter').selectedOptions[0].text;
+
+  if (sorted.length === 0) {
+    alert("No data to download.");
+    return;
+  }
+
+  let rows = '';
+  sorted.forEach((item, i) => {
+    rows += `<tr><td>${i + 1}</td><td>${item[0]}</td><td>${item[1].toLocaleString()}</td></tr>`;
+  });
+
+  const html = `<!DOCTYPE html>
+<html><head><title>Walkflix Team 1 - Summary - ${weekLabel}</title>
+<style>
+  body { font-family: Arial; padding: 20px; }
+  h2 { text-align: center; color: #2c3e50; }
+  table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+  th, td { padding: 10px; border: 1px solid #ddd; text-align: center; }
+  th { background: #3498db; color: white; }
+  @media print { button { display: none; } }
+</style></head><body>
+<h2>\ud83d\udeb6 Walkflix Team 1 - Weekly Summary (${weekLabel})</h2>
+<button onclick="window.print()" style="padding:10px 20px;background:#27ae60;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;">\ud83d\udda8\ufe0f Print / Save as PDF</button>
+<table>
+  <thead><tr><th>#</th><th>Name</th><th>Total Steps</th></tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+</body></html>`;
+
+  const newWindow = window.open('', '_blank');
+  newWindow.document.write(html);
+  newWindow.document.close();
 }
 
 function updateChart() {
