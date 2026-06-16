@@ -147,7 +147,7 @@ img {
 
 <div class="container">
 
-<h2>🚶 Walking Challenge Dashboard</h2>
+<h2>🚶 Walkflix Team 1 - Walking Challenge Dashboard</h2>
 
 <!-- FORM -->
 <div class="card">
@@ -174,6 +174,12 @@ img {
 <!-- STATS -->
 <div class="card">
   <h3>📈 Overall Stats</h3>
+  <div style="margin-bottom:10px;">
+    <label>Week: </label>
+    <select id="weekFilter" style="width:auto;display:inline-block;" onchange="updateStats()">
+      <option value="all">All Time</option>
+    </select>
+  </div>
   <div class="stats-grid">
     <div class="stat-box">
       <h4>Total Steps</h4>
@@ -209,6 +215,11 @@ img {
 <!-- TABLE -->
 <div class="card">
   <h3>📋 Daily Entries</h3>
+  <div style="margin-bottom:10px;">
+    <label>Filter by Date: </label>
+    <input id="filterDate" type="date" style="width:auto;display:inline-block;" onchange="renderTable()">
+    <button onclick="clearFilter()" style="width:auto;display:inline-block;padding:8px 16px;margin-left:8px;">Show All</button>
+  </div>
   <table>
     <thead>
       <tr>
@@ -226,9 +237,10 @@ img {
 
 <script>
 
-const API = "https://script.google.com/macros/s/AKfycbxEje38TRs858aEOviPCNIY-IKxihSRI0xX3EpAnlzxFKFwn1bRAyP3Qn2eKfBGitw4Qw/exec";
+const API = "https://script.google.com/macros/s/AKfycbyl47tLwD3GYzn0Yxne5FnJHdP6y9Geu2E-6uFJdBcE33u1YLyESSIGnc2NJjHdh7Ggiw/exec";
 
 let stepsChart = null;
+let allData = [];
 
 window.onload = () => {
   loadData();
@@ -270,13 +282,20 @@ async function submitSteps(){
   reader.readAsDataURL(file);
 }
 
-async function loadData(){
-  const res = await fetch(API);
-  const data = await res.json();
+function renderTable() {
+  const filterDate = document.getElementById('filterDate').value;
+  let filtered = allData;
 
-  // Render table
+  if (filterDate) {
+    filtered = allData.filter(row => {
+      const d = new Date(row.date);
+      const rowDate = isNaN(d) ? row.date : d.toISOString().split('T')[0];
+      return rowDate === filterDate;
+    });
+  }
+
   let html = "";
-  data.forEach(row => {
+  filtered.forEach(row => {
     const d = new Date(row.date);
     const dateStr = isNaN(d) ? row.date : d.toLocaleDateString('en-GB');
     html += `
@@ -288,20 +307,87 @@ async function loadData(){
       </tr>
     `;
   });
-  document.getElementById("tableBody").innerHTML = html;
+  document.getElementById("tableBody").innerHTML = html || '<tr><td colspan="4">No entries for this date</td></tr>';
+}
+
+function clearFilter() {
+  document.getElementById('filterDate').value = '';
+  renderTable();
+}
+
+async function loadData(){
+  const res = await fetch(API);
+  const data = await res.json();
+  allData = data;
+
+  populateWeekFilter();
+  renderTable();
+
+  updateStats();
+}
+
+function getWeekNumber(d) {
+  const date = new Date(d);
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+  const week1 = new Date(date.getFullYear(), 0, 4);
+  return [date.getFullYear(), 1 + Math.round(((date - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7)];
+}
+
+function getWeekRange(year, week) {
+  const jan4 = new Date(year, 0, 4);
+  const start = new Date(jan4);
+  start.setDate(jan4.getDate() - (jan4.getDay() || 7) + 1 + (week - 1) * 7);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return start.toLocaleDateString('en-GB') + " - " + end.toLocaleDateString('en-GB');
+}
+
+function populateWeekFilter() {
+  const weeks = new Set();
+  allData.forEach(row => {
+    const d = new Date(row.date);
+    if (!isNaN(d)) {
+      const [yr, wk] = getWeekNumber(d);
+      weeks.add(yr + "-W" + String(wk).padStart(2, '0'));
+    }
+  });
+
+  const select = document.getElementById('weekFilter');
+  select.innerHTML = '<option value="all">All Time</option>';
+  [...weeks].sort().reverse().forEach(w => {
+    const [yr, wk] = w.split('-W');
+    const range = getWeekRange(parseInt(yr), parseInt(wk));
+    select.innerHTML += `<option value="${w}">Week ${wk} (${range})</option>`;
+  });
+}
+
+function updateStats() {
+  const weekVal = document.getElementById('weekFilter').value;
+  let filtered = allData;
+
+  if (weekVal !== 'all') {
+    const [selYear, selWeek] = weekVal.split('-W').map(Number);
+    filtered = allData.filter(row => {
+      const d = new Date(row.date);
+      if (isNaN(d)) return false;
+      const [yr, wk] = getWeekNumber(d);
+      return yr === selYear && wk === selWeek;
+    });
+  }
 
   // Calculate totals per participant
   const totals = {};
   let totalSteps = 0;
 
-  data.forEach(row => {
+  filtered.forEach(row => {
     const steps = Number(row.steps) || 0;
     totals[row.name] = (totals[row.name] || 0) + steps;
     totalSteps += steps;
   });
 
   // Stats
-  const entries = data.length;
+  const entries = filtered.length;
   const avgSteps = entries ? Math.round(totalSteps / entries) : 0;
   const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
   const topWalker = sorted.length ? sorted[0][0] : "-";
@@ -324,7 +410,7 @@ async function loadData(){
       </div>
     `;
   });
-  document.getElementById("leaderboard").innerHTML = lbHtml;
+  document.getElementById("leaderboard").innerHTML = lbHtml || '<p>No data for this week</p>';
 
   // Chart
   const labels = sorted.map(s => s[0]);
