@@ -371,7 +371,7 @@ body.dark-mode #missingList span {
 
 <!-- SUMMARY TABLE -->
 <div class="card">
-  <h3>📝 Weekly Summary</h3>
+  <h3 id="summaryHeading">📝 Weekly Summary</h3>
   <table>
     <thead>
       <tr>
@@ -393,7 +393,7 @@ body.dark-mode #missingList span {
 
 <script>
 
-const API = "https://script.google.com/macros/s/AKfycbzEgK4-g1a-_tjMqsgH7cWTIzCpa6lVQYbiPcQq7H-Eo8yTUdOIf3pLwf89LjraNyCRQQ/exec";
+const API = "https://script.google.com/macros/s/AKfycbyFs_7wQDlNCv2Ph0EXCJ494raCOHySexAaYNViEMWFjc8b4IBXChTPzdiIe_XG_CM1PA/exec";
 
 let stepsChart = null;
 let trendChart = null;
@@ -588,7 +588,7 @@ function renderTable() {
         <td>${row.steps}</td>
         <td><a href="${imgUrl}" target="_blank"><img src="${thumbUrl}" onerror="this.outerHTML='<a href=${imgUrl} target=_blank>View</a>'" /></a></td>
         <td>${selfieCell}</td>
-        <td><button onclick="editEntry('${row.name}','${getRawDate(row)}','${row.steps}')" style="width:auto;padding:6px 12px;font-size:13px;">✏️ Edit</button></td>
+        <td><button onclick="editEntry('${row.name}','${getRawDate(row)}','${row.steps}')" style="width:auto;padding:6px 10px;font-size:13px;">✏️</button><button onclick="deleteEntry('${row.name}','${getRawDate(row)}')" style="width:auto;padding:6px 10px;font-size:13px;background:#e74c3c;margin-left:4px;">🗑️</button></td>
       </tr>
     `;
   });
@@ -614,7 +614,7 @@ function clearFilter() {
         <td>${row.steps}</td>
         <td><a href="${imgUrl}" target="_blank"><img src="${thumbUrl}" onerror="this.outerHTML='<a href=${imgUrl} target=_blank>View</a>'" /></a></td>
         <td>${selfieCell}</td>
-        <td><button onclick="editEntry('${row.name}','${getRawDate(row)}','${row.steps}')" style="width:auto;padding:6px 12px;font-size:13px;">✏️ Edit</button></td>
+        <td><button onclick="editEntry('${row.name}','${getRawDate(row)}','${row.steps}')" style="width:auto;padding:6px 10px;font-size:13px;">✏️</button><button onclick="deleteEntry('${row.name}','${getRawDate(row)}')" style="width:auto;padding:6px 10px;font-size:13px;background:#e74c3c;margin-left:4px;">🗑️</button></td>
       </tr>
     `;
   });
@@ -628,6 +628,20 @@ function editEntry(name, date, steps) {
   document.getElementById('file').value = '';
   window.scrollTo({top: 0, behavior: 'smooth'});
   alert('Entry loaded for editing. Update the steps/screenshot and click Submit to save changes.');
+}
+
+async function deleteEntry(name, date) {
+  if (!confirm(`Delete entry for ${name} on ${date}?`)) return;
+
+  await fetch(API, {
+    method: "POST",
+    mode: "no-cors",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: 'DELETE', name: name, date: date })
+  });
+
+  alert('Entry deleted.');
+  loadData();
 }
 
 function downloadWeekData() {
@@ -680,14 +694,11 @@ function downloadWeekData() {
       const selfieMatch = selfieUrl.match(/\/d\/([^/]+)/);
       const selfieThumb = selfieMatch ? 'https://drive.google.com/thumbnail?id=' + selfieMatch[1] + '&sz=w300' : '';
       const selfieDownload = selfieMatch ? 'https://drive.google.com/uc?export=download&id=' + selfieMatch[1] : '';
-      const selfieCell = selfieThumb ? `<img src="${selfieThumb}" style="max-width:200px;max-height:150px;"><br><a href="${selfieDownload}" target="_blank" style="font-size:12px;">⬇️ Download</a>` : '-';
+      const selfieCell = selfieMatch ? `<a href="${selfieDownload}" target="_blank">⬇️ Download</a>` : '-';
       dailyHtml += `<tr>
         <td>${row.name}</td>
         <td>${row.steps}</td>
-        <td>
-          <img src="${thumbUrl}" style="max-width:200px;max-height:150px;"><br>
-          <a href="${downloadUrl}" target="_blank" style="font-size:12px;">⬇️ Download</a>
-        </td>
+        <td><a href="${downloadUrl}" target="_blank">⬇️ Download</a></td>
         <td>${selfieCell}</td>
       </tr>`;
     });
@@ -703,9 +714,12 @@ function downloadWeekData() {
   const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
 
   let summaryRows = '';
+  let teamTotal = 0;
   sorted.forEach((item, i) => {
+    teamTotal += item[1];
     summaryRows += `<tr><td>${i + 1}</td><td>${item[0]}</td><td>${item[1].toLocaleString()}</td></tr>`;
   });
+  summaryRows += `<tr class="team-total"><td></td><td>Team Total</td><td>${teamTotal.toLocaleString()}</td></tr>`;
 
   const html = `<!DOCTYPE html>
 <html><head><title>Walkflix Team 1 - ${weekLabel}</title>
@@ -717,18 +731,20 @@ function downloadWeekData() {
   th, td { padding: 10px; border: 1px solid #ddd; text-align: center; }
   th { background: #3498db; color: white; }
   img { max-width: 200px; max-height: 150px; border-radius: 6px; }
+  .team-total { font-weight: bold; background: #e8f5e9; }
   @media print { button { display: none; } }
 </style></head><body>
 <h2>🚶 Walkflix Team 1 - ${weekLabel}</h2>
 <button onclick="window.print()" style="padding:10px 20px;background:#27ae60;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;margin-bottom:20px;">🖨️ Print / Save as PDF</button>
-
-${dailyHtml}
 
 <h3>📝 Weekly Summary</h3>
 <table>
   <thead><tr><th>#</th><th>Name</th><th>Total Steps</th></tr></thead>
   <tbody>${summaryRows}</tbody>
 </table>
+
+${dailyHtml}
+
 </body></html>`;
 
   const newWindow = window.open('', '_blank');
@@ -909,7 +925,20 @@ function updateLeaderboard() {
 }
 
 function updateSummary() {
-  const filtered = getGlobalFiltered();
+  // Always show current week - not affected by global filter
+  const today = new Date();
+  const [curYr, curWk] = getWeekNumber(today);
+  const weekRange = getWeekRange(curYr, curWk);
+
+  // Update heading with week range
+  document.getElementById('summaryHeading').textContent = `📝 Weekly Summary (${weekRange})`;
+
+  const filtered = allData.filter(row => {
+    const rd = getRawDate(row);
+    if (!rd) return false;
+    const [yr, wk] = getWeekNumber(parseDate(rd));
+    return yr === curYr && wk === curWk;
+  });
 
   const totals = {};
   filtered.forEach(row => {
@@ -919,9 +948,12 @@ function updateSummary() {
 
   const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
   let html = "";
+  let teamTotal = 0;
   sorted.forEach((item, i) => {
+    teamTotal += item[1];
     html += `<tr><td>${i + 1}</td><td>${item[0]}</td><td>${item[1].toLocaleString()}</td></tr>`;
   });
+  html += `<tr style="font-weight:bold;background:#e8f5e9;"><td></td><td>Team Total</td><td>${teamTotal.toLocaleString()}</td></tr>`;
   document.getElementById("summaryBody").innerHTML = html || '<tr><td colspan="3">No data</td></tr>';
 }
 
