@@ -289,14 +289,6 @@ body.dark-mode .team-total-row {
   <button id="submitBtn" onclick="submitSteps()">Submit</button>
 </div>
 
-<!-- WHO HASN'T SUBMITTED TODAY -->
-<div class="card" id="missingCard">
-  <h3>⚠️ Who hasn't submitted?</h3>
-  <div style="margin-bottom:10px;">
-    <input id="missingDate" type="date" style="width:auto;display:inline-block;" onchange="updateMissing()">
-  </div>
-  <div id="missingList"></div>
-</div>
 
 <!-- FILTER BAR -->
 <div class="card" style="padding:12px 15px;">
@@ -383,6 +375,10 @@ body.dark-mode .team-total-row {
     </thead>
     <tbody id="tableBody"></tbody>
   </table>
+  <div style="margin-top:15px;padding-top:12px;border-top:1px solid #eee;">
+    <h4 style="color:#e67e22;margin:0 0 8px;">⚠️ Who hasn't submitted?</h4>
+    <div id="missingList"></div>
+  </div>
 </div>
 
 <!-- SUMMARY TABLE -->
@@ -603,6 +599,7 @@ function renderTable() {
     `;
   });
   document.getElementById("tableBody").innerHTML = html || '<tr><td colspan="6">No entries for this date</td></tr>';
+  updateMissing();
 }
 
 function clearFilter() {
@@ -1063,21 +1060,16 @@ function updateChart() {
 }
 
 function updateMissing() {
-  const missingDateInput = document.getElementById('missingDate');
-  if (!missingDateInput.value) {
-    const today = new Date();
-    missingDateInput.value = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-  }
-  // Prevent future dates
+  const filterDate = document.getElementById('filterDate').value;
   const today = new Date();
-  missingDateInput.max = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+  const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+  const selectedDate = filterDate || todayStr;
 
-  const selectedDate = missingDateInput.value;
   const submittedOnDate = new Set(allData.filter(row => getRawDate(row) === selectedDate).map(row => row.name));
   const missing = participants.filter(p => !submittedOnDate.has(p));
 
   if (missing.length === 0) {
-    document.getElementById('missingList').innerHTML = '<p style="color:#27ae60;">✅ Everyone has submitted! Great job team!</p>';
+    document.getElementById('missingList').innerHTML = '<p style="color:#27ae60;margin:0;">✅ Everyone has submitted! Great job team!</p>';
   } else {
     document.getElementById('missingList').innerHTML = missing.map(n => `<span style="display:inline-block;background:#fff3cd;padding:5px 10px;margin:4px;border-radius:5px;font-size:14px;">⏳ ${n}</span>`).join('');
   }
