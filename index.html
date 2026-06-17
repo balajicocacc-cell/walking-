@@ -174,6 +174,11 @@ img {
   font-size: 18px;
 }
 
+.team-total-row {
+  font-weight: bold;
+  background: #e8f5e9;
+}
+
 body.dark-mode {
   background: linear-gradient(135deg, #1a1a2e, #16213e) !important;
   color: #eee;
@@ -226,6 +231,16 @@ body.dark-mode #missingList span {
   background: #3d3d00 !important;
   color: #ffc107;
 }
+
+body.dark-mode tr.team-total, body.dark-mode tr[style*="background:#e8f5e9"] {
+  background: #2c3e50 !important;
+  color: #eee;
+}
+
+body.dark-mode .team-total-row {
+  background: #2c3e50 !important;
+  color: #27ae60;
+}
 </style>
 
 </head>
@@ -245,19 +260,7 @@ body.dark-mode #missingList span {
 <div class="container hidden" id="dashboard">
 
 <h2>🚶 Walkflix Team 1 - Walking Challenge Dashboard</h2>
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
-  <div>
-    <label>Filter by: </label>
-    <select id="filterType" style="width:auto;display:inline-block;" onchange="toggleFilterType()">
-      <option value="week">Week</option>
-      <option value="date">Date</option>
-    </select>
-    <select id="weekFilter" style="width:auto;display:inline-block;margin-left:8px;" onchange="onWeekChange()">
-      <option value="all">All Time</option>
-    </select>
-    <input id="globalDate" type="date" style="width:auto;display:inline-block;margin-left:8px;display:none;" onchange="onWeekChange()">
-    <button onclick="downloadWeekData()" style="width:auto;display:inline-block;padding:8px 16px;margin-left:8px;">⬇️ Download Report</button>
-  </div>
+<div style="text-align:right;margin-bottom:10px;">
   <button onclick="toggleDarkMode()" id="darkModeBtn" style="width:auto;padding:8px 14px;font-size:13px;background:#34495e;">🌙 Dark Mode</button>
 </div>
 
@@ -293,6 +296,19 @@ body.dark-mode #missingList span {
     <input id="missingDate" type="date" style="width:auto;display:inline-block;" onchange="updateMissing()">
   </div>
   <div id="missingList"></div>
+</div>
+
+<!-- FILTER BAR -->
+<div class="card" style="padding:12px 15px;">
+  <label>Filter by: </label>
+  <select id="filterType" style="width:auto;display:inline-block;" onchange="toggleFilterType()">
+    <option value="week">Week</option>
+    <option value="date">Date</option>
+  </select>
+  <select id="weekFilter" style="width:auto;display:inline-block;margin-left:8px;" onchange="onWeekChange()">
+    <option value="all">All Time</option>
+  </select>
+  <input id="globalDate" type="date" style="width:auto;display:inline-block;margin-left:8px;display:none;" onchange="onWeekChange()">
 </div>
 
 <!-- STATS -->
@@ -384,8 +400,9 @@ body.dark-mode #missingList span {
   </table>
 </div>
 
-<!-- LOGOUT -->
-<div style="text-align:center;margin-top:20px;margin-bottom:30px;">
+<!-- LOGOUT & DOWNLOAD -->
+<div style="text-align:center;margin-top:20px;margin-bottom:30px;display:flex;justify-content:center;gap:10px;">
+  <button onclick="downloadWeekData()" style="width:auto;padding:10px 20px;background:#3498db;font-size:14px;">⬇️ Download Report</button>
   <button onclick="logout()" style="width:auto;padding:10px 20px;background:#e74c3c;font-size:14px;">🚪 Logout</button>
 </div>
 
@@ -439,13 +456,6 @@ const motivationalQuotes = [
   "🤾 Fitness isn't a destination, it's your daily walk!",
   "🌚 Even on tough days, you still showed up. Legend!"
 ];
-
-function logout() {
-  sessionStorage.removeItem('walkflix_auth');
-  document.getElementById('dashboard').classList.add('hidden');
-  document.getElementById('loginScreen').style.display = 'block';
-  document.getElementById('password').value = '';
-}
 
 function login() {
   const input = document.getElementById('password').value;
@@ -641,7 +651,8 @@ async function deleteEntry(name, date) {
   });
 
   alert('Entry deleted.');
-  loadData();
+  // Wait for backend to process before reloading
+  setTimeout(() => loadData(), 2000);
 }
 
 function downloadWeekData() {
@@ -953,7 +964,7 @@ function updateSummary() {
     teamTotal += item[1];
     html += `<tr><td>${i + 1}</td><td>${item[0]}</td><td>${item[1].toLocaleString()}</td></tr>`;
   });
-  html += `<tr style="font-weight:bold;background:#e8f5e9;"><td></td><td>Team Total</td><td>${teamTotal.toLocaleString()}</td></tr>`;
+  html += `<tr class="team-total-row"><td></td><td>Team Total</td><td>${teamTotal.toLocaleString()}</td></tr>`;
   document.getElementById("summaryBody").innerHTML = html || '<tr><td colspan="3">No data</td></tr>';
 }
 
