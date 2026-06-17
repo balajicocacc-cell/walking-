@@ -1061,9 +1061,23 @@ function updateChart() {
 
 function updateMissing() {
   const filterDate = document.getElementById('filterDate').value;
-  const today = new Date();
-  const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-  const selectedDate = filterDate || todayStr;
+  let selectedDate;
+
+  if (filterDate) {
+    selectedDate = filterDate;
+  } else {
+    // Match renderTable's fallback logic - use today, or latest date if no entries today
+    const today = new Date();
+    const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+    const todayEntries = allData.filter(row => getRawDate(row) === todayStr);
+    if (todayEntries.length > 0) {
+      selectedDate = todayStr;
+    } else if (allData.length > 0) {
+      selectedDate = allData.map(r => getRawDate(r)).sort().reverse()[0];
+    } else {
+      selectedDate = todayStr;
+    }
+  }
 
   const submittedOnDate = new Set(allData.filter(row => getRawDate(row) === selectedDate).map(row => row.name));
   const missing = participants.filter(p => !submittedOnDate.has(p));
