@@ -1248,9 +1248,12 @@ async function clearAnnouncement() {
 function logout() {
   sessionStorage.removeItem('walkflix_auth');
   sessionStorage.removeItem('walkflix_dark');
+  sessionStorage.removeItem('walkflix_role');
+  isAdmin = false;
   document.body.classList.remove('dark-mode');
   document.getElementById('dashboard').classList.add('hidden');
   document.getElementById('loginScreen').style.display = 'block';
+  document.getElementById('adminPanel').style.display = 'none';
   document.getElementById('password').value = '';
 }
 
