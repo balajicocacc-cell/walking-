@@ -241,6 +241,17 @@ body.dark-mode .team-total-row {
   background: #2c3e50 !important;
   color: #27ae60;
 }
+
+body.dark-mode #announcementBox {
+  background: #3d3d00 !important;
+  color: #ffc107;
+}
+
+body.dark-mode #adminPanel textarea {
+  background: #2c3e50;
+  color: #eee;
+  border-color: #555;
+}
 </style>
 
 </head>
@@ -262,6 +273,19 @@ body.dark-mode .team-total-row {
 <h2>🚶 Walkflix Team 1 - Walking Challenge Dashboard</h2>
 <div style="text-align:right;margin-bottom:10px;">
   <button onclick="toggleDarkMode()" id="darkModeBtn" style="width:auto;padding:8px 14px;font-size:13px;background:#34495e;">🌙 Dark Mode</button>
+</div>
+
+<!-- ANNOUNCEMENT -->
+<div id="announcementBox" class="card" style="background:#fff9c4;border-left:4px solid #f39c12;display:none;">
+  <p id="announcementText" style="margin:0;font-size:15px;"></p>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="adminPanel" class="card" style="display:none;border-left:4px solid #9b59b6;">
+  <h3>🔐 Admin - Post Announcement</h3>
+  <textarea id="announcementInput" rows="2" style="width:100%;padding:10px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;resize:vertical;" placeholder="Type announcement here..."></textarea>
+  <button onclick="postAnnouncement()" style="margin-top:8px;background:#9b59b6;">📢 Post Announcement</button>
+  <button onclick="clearAnnouncement()" style="margin-top:8px;background:#e74c3c;">❌ Clear Announcement</button>
 </div>
 
 <!-- FORM -->
@@ -326,10 +350,6 @@ body.dark-mode .team-total-row {
     <div class="stat-box">
       <h4>Avg Steps/Entry</h4>
       <span id="statAvgSteps">0</span>
-    </div>
-    <div class="stat-box">
-      <h4>🔥 Best Streak</h4>
-      <span id="statBestStreak">-</span>
     </div>
   </div>
 </div>
@@ -406,7 +426,7 @@ body.dark-mode .team-total-row {
 
 <script>
 
-const API = "https://script.google.com/macros/s/AKfycbyFs_7wQDlNCv2Ph0EXCJ494raCOHySexAaYNViEMWFjc8b4IBXChTPzdiIe_XG_CM1PA/exec";
+const API = "https://script.google.com/macros/s/AKfycbz2X-KTCDY7t_FemEZgyKHNzPuT7E2HQcCL-80F4zyFSgo5219GNKzjX4u1lzqaMPLZ5Q/exec";
 
 let stepsChart = null;
 let trendChart = null;
@@ -419,6 +439,8 @@ const participants = [
 ];
 
 const PASS = "walkflix2026";
+const ADMIN_PASS = "walkflix@admin";
+let isAdmin = false;
 
 const motivationalQuotes = [
   "🔥 Every step counts! You're crushing it!",
@@ -455,10 +477,13 @@ const motivationalQuotes = [
 
 function login() {
   const input = document.getElementById('password').value;
-  if (input === PASS) {
+  if (input === PASS || input === ADMIN_PASS) {
+    isAdmin = (input === ADMIN_PASS);
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('dashboard').classList.remove('hidden');
     sessionStorage.setItem('walkflix_auth', 'true');
+    sessionStorage.setItem('walkflix_role', isAdmin ? 'admin' : 'user');
+    if (isAdmin) document.getElementById('adminPanel').style.display = 'block';
     loadData();
   } else {
     document.getElementById('loginError').style.display = 'block';
@@ -469,6 +494,10 @@ window.onload = () => {
   if (sessionStorage.getItem('walkflix_auth') === 'true') {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('dashboard').classList.remove('hidden');
+    if (sessionStorage.getItem('walkflix_role') === 'admin') {
+      isAdmin = true;
+      document.getElementById('adminPanel').style.display = 'block';
+    }
     if (sessionStorage.getItem('walkflix_dark') === 'true') {
       document.body.classList.add('dark-mode');
       document.getElementById('darkModeBtn').textContent = '☀️ Light Mode';
@@ -766,7 +795,17 @@ async function loadData(){
 
   const res = await fetch(API);
   const data = await res.json();
-  allData = data;
+
+  // Handle announcement
+  if (data.announcement) {
+    document.getElementById('announcementText').textContent = '📢 ' + data.announcement;
+    document.getElementById('announcementBox').style.display = 'block';
+    if (isAdmin) document.getElementById('announcementInput').value = data.announcement;
+  } else {
+    document.getElementById('announcementBox').style.display = 'none';
+  }
+
+  allData = data.entries || data;
 
   document.getElementById('loadingMsg').style.display = 'none';
   document.getElementById('statsGrid').style.display = 'grid';
@@ -893,15 +932,6 @@ function updateStats() {
   document.getElementById("statTotalEntries").textContent = entries;
   document.getElementById("statTopWalker").textContent = topWalker;
   document.getElementById("statAvgSteps").textContent = avgSteps.toLocaleString();
-
-  // Best streak
-  let bestStreak = 0;
-  let streakPerson = '-';
-  participants.forEach(p => {
-    const s = getStreak(p);
-    if (s > bestStreak) { bestStreak = s; streakPerson = p; }
-  });
-  document.getElementById("statBestStreak").textContent = bestStreak > 0 ? `${streakPerson} (${bestStreak}d)` : '-';
 
   // Leaderboard
   updateLeaderboard();
@@ -1089,20 +1119,6 @@ function updateMissing() {
   }
 }
 
-function getStreak(name) {
-  const dates = allData.filter(r => r.name === name).map(r => getRawDate(r)).sort().reverse();
-  if (dates.length === 0) return 0;
-  let streak = 1;
-  for (let i = 0; i < dates.length - 1; i++) {
-    const curr = parseDate(dates[i]);
-    const prev = parseDate(dates[i + 1]);
-    const diff = (curr - prev) / (1000 * 60 * 60 * 24);
-    if (diff === 1) streak++;
-    else break;
-  }
-  return streak;
-}
-
 function updateTrendChart() {
   const selected = document.getElementById('trendFilter').value;
 
@@ -1198,6 +1214,35 @@ function toggleDarkMode() {
     btn.textContent = '🌙 Dark Mode';
     sessionStorage.setItem('walkflix_dark', 'false');
   }
+}
+
+async function postAnnouncement() {
+  const msg = document.getElementById('announcementInput').value.trim();
+  if (!msg) { alert('Please enter an announcement'); return; }
+
+  await fetch(API, {
+    method: "POST",
+    mode: "no-cors",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: 'ANNOUNCEMENT', message: msg })
+  });
+
+  alert('Announcement posted!');
+  document.getElementById('announcementInput').value = '';
+  setTimeout(() => loadData(), 2000);
+}
+
+async function clearAnnouncement() {
+  await fetch(API, {
+    method: "POST",
+    mode: "no-cors",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: 'ANNOUNCEMENT', message: '' })
+  });
+
+  alert('Announcement cleared!');
+  document.getElementById('announcementBox').style.display = 'none';
+  setTimeout(() => loadData(), 2000);
 }
 
 function logout() {
