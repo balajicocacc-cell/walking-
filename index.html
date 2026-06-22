@@ -5,6 +5,7 @@
 <title>Walkflix Team 1</title>
 <link rel="icon" href="https://em-content.zobj.net/source/apple/391/person-walking_1f6b6.png" type="image/png">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <style>
 body {
@@ -282,10 +283,11 @@ body.dark-mode #adminPanel textarea {
 
 <!-- ADMIN PANEL -->
 <div id="adminPanel" class="card" style="display:none;border-left:4px solid #9b59b6;">
-  <h3>🔐 Admin - Post Announcement</h3>
+  <h3>🔐 Admin Panel</h3>
   <textarea id="announcementInput" rows="2" style="width:100%;padding:10px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box;resize:vertical;" placeholder="Type announcement here..."></textarea>
   <button onclick="postAnnouncement()" style="margin-top:8px;background:#9b59b6;">📢 Post Announcement</button>
   <button onclick="clearAnnouncement()" style="margin-top:8px;background:#e74c3c;">❌ Clear Announcement</button>
+  <button onclick="downloadAdminExcel()" style="margin-top:8px;background:#2980b9;">📊 Download Weekly Excel</button>
 </div>
 
 <!-- FORM -->
@@ -1243,6 +1245,82 @@ async function clearAnnouncement() {
   alert('Announcement cleared!');
   document.getElementById('announcementBox').style.display = 'none';
   setTimeout(() => loadData(), 2000);
+}
+
+function downloadAdminExcel() {
+  const weekVal = document.getElementById('weekFilter').value;
+  let filtered = allData;
+  let weekLabel = 'All Time';
+
+  if (weekVal !== 'all') {
+    const [selYear, selWeek] = weekVal.split('-W').map(Number);
+    filtered = allData.filter(row => {
+      const rd = getRawDate(row);
+      if (!rd) return false;
+      const [yr, wk] = getWeekNumber(parseDate(rd));
+      return yr === selYear && wk === selWeek;
+    });
+    weekLabel = document.getElementById('weekFilter').selectedOptions[0].text;
+  } else {
+    // Default to current week
+    const today = new Date();
+    const [curYr, curWk] = getWeekNumber(today);
+    filtered = allData.filter(row => {
+      const rd = getRawDate(row);
+      if (!rd) return false;
+      const [yr, wk] = getWeekNumber(parseDate(rd));
+      return yr === curYr && wk === curWk;
+    });
+    weekLabel = 'Current Week';
+  }
+
+  if (filtered.length === 0) {
+    alert('No data for the selected week.');
+    return;
+  }
+
+  // Get all unique dates in the week sorted
+  const dates = [...new Set(filtered.map(r => getRawDate(r)))].sort();
+  const dateHeaders = dates.map(d => {
+    const p = d.split('-');
+    return p[2] + ' ' + ['', 'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(p[1])] + ' ' + p[0];
+  });
+
+  // Build rows: Team Name, Walker, date1, date2, ..., Total
+  const rows = [];
+  const teamName = 'Walkflix Team 1';
+
+  participants.forEach(name => {
+    const row = {
+      'Team': teamName,
+      'Walkers': name
+    };
+    let total = 0;
+    dates.forEach((date, i) => {
+      const entry = filtered.find(r => r.name === name && getRawDate(r) === date);
+      const steps = entry ? Number(entry.steps) || 0 : 0;
+      row[dateHeaders[i]] = steps || '';
+      total += steps;
+    });
+    row['Total Steps'] = total;
+    rows.push(row);
+  });
+
+  // Add team total row
+  const totalRow = { 'Team': '', 'Walkers': 'TEAM TOTAL' };
+  let grandTotal = 0;
+  dates.forEach((date, i) => {
+    const dayTotal = filtered.filter(r => getRawDate(r) === date).reduce((s, r) => s + (Number(r.steps) || 0), 0);
+    totalRow[dateHeaders[i]] = dayTotal;
+    grandTotal += dayTotal;
+  });
+  totalRow['Total Steps'] = grandTotal;
+  rows.push(totalRow);
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Weekly Report');
+  XLSX.writeFile(wb, `Walkflix_Team1_${weekLabel.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
 }
 
 function logout() {
